@@ -75,7 +75,6 @@ class Mechanic(Base):
 class CustomerSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Customer
-        load_instance = True
 
 customer_schema = CustomerSchema()
 customers_schema = CustomerSchema(many=True)
@@ -114,4 +113,6 @@ def get_customer(customer_id):
         return customer_schema.jsonify(customer), 200
     return jsonify({"error": "Customer not found."}), 404
 
+with app.app_context():
+    db.create_all()
 app.run()
