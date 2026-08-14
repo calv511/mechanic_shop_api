@@ -100,16 +100,14 @@ def create_customer():
     return customer_schema.jsonify(new_customer), 201
 
 # GET ALL CUSTOMERS
-@app.route("/customers", method=['GET'])
-def get_members():
-    query = select(Customer)
-    customers = db.session.execute(query).scalar().all()
-
+@app.route("/customers", methods=['GET'])
+def get_customers():
+    customers = db.session.execute(select(Customer)).scalars().all()
     return customers_schema.jsonify(customers)
 
 # GET SPECIFIC CUSTOMER
 @app.route("/customers/<int:customer_id>", methods=['GET'])
-def get_member(customer_id):
+def get_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
 
     if customer:
