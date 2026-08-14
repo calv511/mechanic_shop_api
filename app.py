@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String
 from flask_marshmallow import Marshmallow
+from marshmallow import ValidationError
 from datetime import date
 from dotenv import load_dotenv
 import os
@@ -78,5 +79,23 @@ class CustomerSchema(ma.SQLAlchemyAutoSchema):
         
         customer_schema = CustomerSchema()
         customers_schema = CustomerSchema(many=True) # variant that allows for the serialization of many Users
-    
+
+@app.route("/customers", methods=['POST'])
+def create_customer():
+    try:
+        customer_data = customer_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    query = select(Customer).where(Customer.email == customer_data['email'])
+# Checking our db for a member with this email
+    existing_customer = db.session.execute(query).scalars().all()
+    if existing_customer:
+        return jsonify({"error": "Email already associated with an account."}), 400
+
+    new_customer = Customer(**customer_data)
+    db.session.add(new_customer)
+    db.session.commit()
+    return customer_schema.jsonify(new_customer), 201
+
 app.run()
