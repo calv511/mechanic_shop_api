@@ -1,7 +1,7 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String
+from sqlalchemy import String, select
 from flask_marshmallow import Marshmallow
 from marshmallow import ValidationError
 from datetime import date
@@ -13,20 +13,20 @@ load_dotenv()
 
 app = Flask(__name__)
 
+class Base(DeclarativeBase):
+    pass
+
 db_pass = os.getenv("DB_PASS")
 db_name = os.getenv("DB_NAME")
 db_host = os.getenv("DB_HOST")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+mysqlconnector://root:{db_pass}@localhost/{db_name}'
 
-db = SQLAlchemy(model_class= Base)
+db = SQLAlchemy(model_class=Base)
 ma = Marshmallow()
 
 db.init_app(app)
 ma.init_app(app)
-
-class Base(DeclarativeBase):
-    pass
 
 class Customer(Base):
     __tablename__ = 'customers'
@@ -74,22 +74,23 @@ class Mechanic(Base):
 
 class CustomerSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
-        model = Customer # using the SQLAlchemy model to create fields used in
-                       # serialization, deserialization, and validation
-        
-        customer_schema = CustomerSchema()
-        customers_schema = CustomerSchema(many=True) # variant that allows for the serialization of many Users
+        model = Customer
+        load_instance = True
+
+customer_schema = CustomerSchema()
+customers_schema = CustomerSchema(many=True)
 
 @app.route("/customers", methods=['POST'])
 def create_customer():
     try:
-        customer_data = customer_schema.load(request.json)
+        customer_data = customer_schema.load(request.get_json())
     except ValidationError as e:
         return jsonify(e.messages), 400
 
-    query = select(Customer).where(Customer.email == customer_data['email'])
-# Checking our db for a member with this email
-    existing_customer = db.session.execute(query).scalars().all()
+    existing_customer = db.session.execute(
+        select(Customer).where(Customer.email == customer_data['email'])
+    ).scalars().first()
+
     if existing_customer:
         return jsonify({"error": "Email already associated with an account."}), 400
 
