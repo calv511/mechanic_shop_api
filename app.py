@@ -42,4 +42,11 @@ class Service_Ticket(Base):
     customer_id: Mapped[int] = mapped_column(db.ForeignKey('customers.id'))
 
     customer: Mapped['Customer'] = db.relationship(back_populates='service_ticket')
+
+class Mechanic(Base):
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(db.String(255))
+    email: Mapped[str] = mapped_column(db.String(255))
+    phone: Mapped[str] = mapped_column(db.String(255))
+    salary: Mapped[float] = mapped_column()
 app.run()
