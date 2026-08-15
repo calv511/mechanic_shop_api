@@ -142,7 +142,7 @@ def delete_customer(customer_id):
 
     db.session.delete(customer)
     db.session.commit()
-    return jsonify("message": f'Customer id: {customer_id}, successfully deleted.'), 200
+    return jsonify({"message": f'Customer id: {customer_id}, successfully deleted.'}), 200
 
 with app.app_context():
     db.create_all()
