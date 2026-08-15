@@ -1,0 +1,1065 @@
+{
+	"info": {
+		"name": "Mechanic Shop API",
+		"description": "Endpoint tests for the Mechanic Shop API (customers, mechanics, service tickets).\n\nStart the server with `python app.py` from the project root, then run this collection top to bottom — the Customers and Mechanics create requests store the new ids into collection variables that the Service Tickets requests depend on.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://127.0.0.1:5000",
+			"type": "string"
+		},
+		{
+			"key": "customerId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "mechanicId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "ticketId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "tempCustomerId",
+			"value": "1",
+			"type": "string"
+		},
+		{
+			"key": "tempMechanicId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Customers",
+			"item": [
+				{
+					"name": "Create Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.test(\"Response has an id\", function () {",
+									"    pm.expect(pm.response.json()).to.have.property(\"id\");",
+									"});",
+									"pm.collectionVariables.set(\"customerId\", pm.response.json().id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Ada Lovelace\",\n    \"email\": \"ada@example.com\",\n    \"phone\": \"555-0100\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/customers/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								""
+							]
+						},
+						"description": "Creates a new customer. Returns 400 if the email is already associated with an account."
+					}
+				},
+				{
+					"name": "Create Customer - Duplicate Email (400)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Duplicate Ada\",\n    \"email\": \"ada@example.com\",\n    \"phone\": \"555-0199\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/customers/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								""
+							]
+						},
+						"description": "Re-sends the same email as the previous request to confirm the duplicate-email guard returns 400."
+					}
+				},
+				{
+					"name": "Get All Customers",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response is an array\", function () {",
+									"    pm.expect(pm.response.json()).to.be.an(\"array\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								""
+							]
+						},
+						"description": "Retrieves every customer."
+					}
+				},
+				{
+					"name": "Get Customer By Id",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"description": "Retrieves a single customer by id. Returns 404 if no customer has that id."
+					}
+				},
+				{
+					"name": "Get Customer By Id - Not Found (404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"999999"
+							]
+						}
+					}
+				},
+				{
+					"name": "Update Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Phone was updated\", function () {",
+									"    pm.expect(pm.response.json().phone).to.eql(\"555-0101\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"phone\": \"555-0101\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{customerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{customerId}}"
+							]
+						},
+						"description": "Partial update — only the fields present in the body are changed."
+					}
+				},
+				{
+					"name": "Create Throwaway Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.collectionVariables.set(\"tempCustomerId\", pm.response.json().id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Throwaway Customer\",\n    \"email\": \"throwaway.customer@example.com\",\n    \"phone\": \"555-0102\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/customers/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								""
+							]
+						},
+						"description": "Creates a customer that exists only so the delete test has something to delete. The main customer must survive for the service ticket requests."
+					}
+				},
+				{
+					"name": "Delete Throwaway Customer",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{tempCustomerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{tempCustomerId}}"
+							]
+						},
+						"description": "Deletes the throwaway customer. A customer that already has service tickets cannot be deleted — the tickets hold a foreign key to it."
+					}
+				},
+				{
+					"name": "Delete Customer - Not Found (404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/customers/{{tempCustomerId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"customers",
+								"{{tempCustomerId}}"
+							]
+						},
+						"description": "Repeats the delete to confirm a missing customer returns 404."
+					}
+				}
+			]
+		},
+		{
+			"name": "Mechanics",
+			"item": [
+				{
+					"name": "Create Mechanic",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.collectionVariables.set(\"mechanicId\", pm.response.json().id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Grace Hopper\",\n    \"email\": \"grace@example.com\",\n    \"phone\": \"555-0200\",\n    \"salary\": 60000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mechanics/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mechanics",
+								""
+							]
+						},
+						"description": "Creates a new mechanic."
+					}
+				},
+				{
+					"name": "Create Mechanic - Duplicate Email (400)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Duplicate Grace\",\n    \"email\": \"grace@example.com\",\n    \"phone\": \"555-0299\",\n    \"salary\": 1000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mechanics/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mechanics",
+								""
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Mechanic - Missing Field (400)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"No Salary\",\n    \"email\": \"nosalary@example.com\",\n    \"phone\": \"555-0298\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mechanics/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mechanics",
+								""
+							]
+						},
+						"description": "Omits the required salary field to confirm the schema returns a 400 with validation messages."
+					}
+				},
+				{
+					"name": "Get All Mechanics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Response is an array\", function () {",
+									"    pm.expect(pm.response.json()).to.be.an(\"array\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/mechanics/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mechanics",
+								""
+							]
+						},
+						"description": "Retrieves every mechanic."
+					}
+				},
+				{
+					"name": "Update Mechanic",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Salary was updated\", function () {",
+									"    pm.expect(pm.response.json().salary).to.eql(75000);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"salary\": 75000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mechanics/{{mechanicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mechanics",
+								"{{mechanicId}}"
+							]
+						},
+						"description": "Partial update — only the fields present in the body are changed."
+					}
+				},
+				{
+					"name": "Update Mechanic - Not Found (404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"salary\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mechanics/999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mechanics",
+								"999999"
+							]
+						}
+					}
+				},
+				{
+					"name": "Create Throwaway Mechanic",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.collectionVariables.set(\"tempMechanicId\", pm.response.json().id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Throwaway Mechanic\",\n    \"email\": \"throwaway.mechanic@example.com\",\n    \"phone\": \"555-0201\",\n    \"salary\": 40000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/mechanics/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mechanics",
+								""
+							]
+						},
+						"description": "Creates a mechanic that exists only so the delete test has something to delete. The main mechanic must survive for the service ticket requests."
+					}
+				},
+				{
+					"name": "Delete Throwaway Mechanic",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/mechanics/{{tempMechanicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mechanics",
+								"{{tempMechanicId}}"
+							]
+						}
+					}
+				},
+				{
+					"name": "Delete Mechanic - Not Found (404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/mechanics/{{tempMechanicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"mechanics",
+								"{{tempMechanicId}}"
+							]
+						},
+						"description": "Repeats the delete to confirm a missing mechanic returns 404."
+					}
+				}
+			]
+		},
+		{
+			"name": "Service Tickets",
+			"item": [
+				{
+					"name": "Create Service Ticket",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 201\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"pm.collectionVariables.set(\"ticketId\", pm.response.json().id);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"VIN\": \"1HGCM82633A004352\",\n    \"service_date\": \"2026-08-15\",\n    \"service_desc\": \"Replaced front brake pads and rotors\",\n    \"customer_id\": {{customerId}}\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/service-tickets/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"service-tickets",
+								""
+							]
+						},
+						"description": "Creates a service ticket for an existing customer. service_date must be YYYY-MM-DD."
+					}
+				},
+				{
+					"name": "Create Service Ticket - Customer Not Found (404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"VIN\": \"1HGCM82633A004352\",\n    \"service_date\": \"2026-08-15\",\n    \"service_desc\": \"Oil change\",\n    \"customer_id\": 999999\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/service-tickets/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"service-tickets",
+								""
+							]
+						}
+					}
+				},
+				{
+					"name": "Assign Mechanic",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Mechanic is in the ticket's mechanics list\", function () {",
+									"    var ids = pm.response.json().mechanics.map(function (m) { return String(m.id); });",
+									"    pm.expect(ids).to.include(String(pm.collectionVariables.get(\"mechanicId\")));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/service-tickets/{{ticketId}}/assign-mechanic/{{mechanicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"service-tickets",
+								"{{ticketId}}",
+								"assign-mechanic",
+								"{{mechanicId}}"
+							]
+						},
+						"description": "Appends a mechanic to the ticket's mechanics relationship. No body required."
+					}
+				},
+				{
+					"name": "Assign Mechanic - Already Assigned (400)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/service-tickets/{{ticketId}}/assign-mechanic/{{mechanicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"service-tickets",
+								"{{ticketId}}",
+								"assign-mechanic",
+								"{{mechanicId}}"
+							]
+						},
+						"description": "Repeats the previous assignment to confirm duplicates are rejected."
+					}
+				},
+				{
+					"name": "Assign Mechanic - Mechanic Not Found (404)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 404\", function () {",
+									"    pm.response.to.have.status(404);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/service-tickets/{{ticketId}}/assign-mechanic/999999",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"service-tickets",
+								"{{ticketId}}",
+								"assign-mechanic",
+								"999999"
+							]
+						}
+					}
+				},
+				{
+					"name": "Get All Service Tickets",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Tickets include their mechanics\", function () {",
+									"    pm.expect(pm.response.json()[0]).to.have.property(\"mechanics\");",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/service-tickets/",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"service-tickets",
+								""
+							]
+						},
+						"description": "Retrieves every service ticket, each with its nested list of assigned mechanics."
+					}
+				},
+				{
+					"name": "Remove Mechanic",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Mechanic is no longer in the mechanics list\", function () {",
+									"    var ids = pm.response.json().mechanics.map(function (m) { return String(m.id); });",
+									"    pm.expect(ids).to.not.include(String(pm.collectionVariables.get(\"mechanicId\")));",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/service-tickets/{{ticketId}}/remove-mechanic/{{mechanicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"service-tickets",
+								"{{ticketId}}",
+								"remove-mechanic",
+								"{{mechanicId}}"
+							]
+						},
+						"description": "Removes the mechanic from the ticket's mechanics relationship."
+					}
+				},
+				{
+					"name": "Remove Mechanic - Not Assigned (400)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Status code is 400\", function () {",
+									"    pm.response.to.have.status(400);",
+									"});"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/service-tickets/{{ticketId}}/remove-mechanic/{{mechanicId}}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"service-tickets",
+								"{{ticketId}}",
+								"remove-mechanic",
+								"{{mechanicId}}"
+							]
+						},
+						"description": "Repeats the removal to confirm the not-assigned guard returns 400."
+					}
+				}
+			]
+		}
+	]
+}
