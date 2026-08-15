@@ -113,6 +113,25 @@ def get_customer(customer_id):
         return customer_schema.jsonify(customer), 200
     return jsonify({"error": "Customer not found."}), 404
 
+# UPDATE SPECIFIC USER
+@app.route("/customers/<int:customer_id>", methods=["PUT"])
+def update_customer(customer_id):
+    customer = db.session.get(Customer, customer_id)
+
+    if not customer:
+        return jsonify({"error": "Customer not found."}), 404
+
+    try:
+        customer_data = customer_schema.load(request.json)
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    for key, value in customer_data.load(request.json):
+        setattr(customer, key, value)
+
+    db.session.commit()
+    return customer_schema.jsonify(customer), 200
+
 with app.app_context():
     db.create_all()
 app.run()
