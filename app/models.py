@@ -45,7 +45,7 @@ class Mechanic(Base):
     __tablename__ = 'mechanics'
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(db.String(255))
-    email: Mapped[str] = mapped_column(db.String(255))
+    email: Mapped[str] = mapped_column(db.String(255), nullable=False, unique=True)
     phone: Mapped[str] = mapped_column(db.String(255))
     salary: Mapped[float] = mapped_column()
     service_tickets: Mapped[List['Service_Ticket']] = db.relationship(
