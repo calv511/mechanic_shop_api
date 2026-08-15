@@ -48,7 +48,7 @@ def update_customer(customer_id):
         return jsonify({"error": "Customer not found."}), 404
 
     try:
-        customer_data = customer_schema.load(request.json)
+        customer_data = customer_schema.load(request.get_json(), partial=True)
     except ValidationError as e:
         return jsonify(e.messages), 400
 
