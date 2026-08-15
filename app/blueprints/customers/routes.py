@@ -3,9 +3,9 @@ from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import Customer, db
-from . import customers_bp as app
+from . import customers_bp
 
-@app.route("/customers", methods=['POST'])
+@customers_bp.route("/", methods=['POST'])
 def create_customer():
     try:
         customer_data = customer_schema.load(request.get_json())
@@ -25,13 +25,13 @@ def create_customer():
     return customer_schema.jsonify(new_customer), 201
 
 # GET ALL CUSTOMERS
-@app.route("/customers", methods=['GET'])
+@customers_bp.route("/", methods=['GET'])
 def get_customers():
     customers = db.session.execute(select(Customer)).scalars().all()
     return customers_schema.jsonify(customers)
 
 # GET SPECIFIC CUSTOMER
-@app.route("/customers/<int:customer_id>", methods=['GET'])
+@customers_bp.route("/<int:customer_id>", methods=['GET'])
 def get_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
 
@@ -40,7 +40,7 @@ def get_customer(customer_id):
     return jsonify({"error": "Customer not found."}), 404
 
 # UPDATE SPECIFIC USER
-@app.route("/customers/<int:customer_id>", methods=["PUT"])
+@customers_bp.route("/<int:customer_id>", methods=["PUT"])
 def update_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
 
@@ -52,14 +52,14 @@ def update_customer(customer_id):
     except ValidationError as e:
         return jsonify(e.messages), 400
 
-    for key, value in customer_data.load(request.json):
+    for key, value in customer_data.items():
         setattr(customer, key, value)
 
     db.session.commit()
     return customer_schema.jsonify(customer), 200
 
 # DELETE SPECIFIC CUSTOMER
-@app.route("/customers/<int:customer_id>", methods=["DELETE"])
+@customers_bp.route("/<int:customer_id>", methods=["DELETE"])
 def delete_customer(customer_id):
     customer = db.session.get(Customer, customer_id)
 
