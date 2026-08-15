@@ -132,6 +132,18 @@ def update_customer(customer_id):
     db.session.commit()
     return customer_schema.jsonify(customer), 200
 
+# DELETE SPECIFIC CUSTOMER
+@app.route("/customers/<int:customer_id>", methods=["DELETE"])
+def delete_customer(customer_id):
+    customer = db.session.get(Customer, customer_id)
+
+    if not customer:
+        return jsonify({"error": "Customer not found."}), 404
+
+    db.session.delete(customer)
+    db.session.commit()
+    return jsonify("message": f'Customer id: {customer_id}, successfully deleted.'), 200
+
 with app.app_context():
     db.create_all()
 app.run()
