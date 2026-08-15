@@ -1,7 +1,7 @@
 from flask import Flask
 from .extensions import ma
 from .models import db
-from blueprints.customers import customers_bp
+from .blueprints.customers import customers_bp
 
 def create_app(config_name):
     app = Flask(__name__)
