@@ -13,7 +13,7 @@ def encode_token(customer_id):
     payload = {
         'exp': datetime.now(timezone.utc) + timedelta(days=0, hours=1), # Set expiration time
         'iat': datetime.now(timezone.utc), # Issues at
-        'sub': customer_id 
+        'sub': str(customer_id) # Must be a string per the JWT spec
     }
 
     token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
@@ -32,10 +32,10 @@ def token_required(f):
 
             try:
                 data = jwt.decode(token, SECRET_KEY, algorithms="HS256")
-                customer_id = data['sub']
-            except jwt.ExpiredSignatureError as e:
+                customer_id = int(data['sub'])
+            except jwt.ExpiredSignatureError:
                 return jsonify({"message": "token expired"}), 400
-            except jwt.InvalidTokenError:
+            except jwt.JWTError:
                 return jsonify({"message": "invalid token"}), 400
 
             return f(customer_id, *args, **kwargs)
