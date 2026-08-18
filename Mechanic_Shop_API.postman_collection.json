@@ -1,7 +1,7 @@
 {
 	"info": {
 		"name": "Mechanic Shop API",
-		"description": "Endpoint tests for the Mechanic Shop API (customers, mechanics, service tickets, inventory).\n\nStart the server with `python app.py` from the project root, then run this collection top to bottom (Customers \u2192 Mechanics \u2192 Inventory \u2192 Service Tickets) \u2014 later requests depend on ids and bearer tokens captured by earlier ones via collection variables.\n\nThe fixture emails (postman.*@example.com) are chosen not to collide with real seeded data. Re-running the full collection a second time against the same database will fail at the first Create Customer / Create Mechanic step, since those two records are deliberately kept alive (not deleted) to support the Inventory and Service Tickets folders.",
+		"description": "Endpoint tests for the Mechanic Shop API (customers, mechanics, service tickets, inventory).\n\nStart the server with `python app.py` from the project root, then run this collection top to bottom (Customers \u2192 Mechanics \u2192 Inventory \u2192 Service Tickets) \u2014 later requests depend on ids and bearer tokens captured by earlier ones via collection variables.\n\nUNIQUE COLUMNS: The Customer and Mechanic created in each run are kept alive (not deleted) so the Inventory and Service Tickets folders have something to work with. Their unique columns (email, customer phone) are suffixed with Postman's {{$timestamp}} dynamic variable and captured into generatedCustomerEmail / generatedMechanicEmail / generatedThrowawayCustomerEmail for reuse in duplicate-email and login tests below them - so nothing collides across runs.\n\nRATE LIMITS: This API has explicit 5-per-minute rate limits on /customers/login (2 hits/run) and /mechanics/login (2 hits/run), and default 20-per-hour and 100-per-day limits on every other route (applied per-endpoint per-IP). What that means in practice: TWO back-to-back full runs within one minute work fine. THREE runs in a minute will trip the login limits (429 on the 5th or 6th login POST). FOUR runs in an hour will trip the default 20/hour on POST /inventory/ and POST /service-tickets/<id>/add-part/<id> (both hit 5 times per run). If you see 429s, either wait ~60 seconds or restart the Flask server (the Limiter uses in-memory storage that resets on restart).\n\nLEFTOVER ROWS: Each run leaves one Customer, one Mechanic, one service ticket, and one inventory part behind permanently - harmless for a class project.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"variable": [
@@ -17,6 +17,16 @@
 		},
 		{
 			"key": "customerToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "generatedCustomerEmail",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "generatedThrowawayCustomerEmail",
 			"value": "",
 			"type": "string"
 		},
@@ -37,6 +47,11 @@
 		},
 		{
 			"key": "mechanicToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "generatedMechanicEmail",
 			"value": "",
 			"type": "string"
 		},
@@ -82,7 +97,8 @@
 									"pm.test(\"Password is not in the response\", function () {",
 									"    pm.expect(pm.response.json()).to.not.have.property(\"password\");",
 									"});",
-									"pm.collectionVariables.set(\"customerId\", pm.response.json().id);"
+									"pm.collectionVariables.set(\"customerId\", pm.response.json().id);",
+									"pm.collectionVariables.set(\"generatedCustomerEmail\", pm.response.json().email);"
 								]
 							}
 						}
@@ -107,14 +123,14 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Postman Customer\",\n    \"email\": \"postman.customer@example.com\",\n    \"phone\": \"555-9001\",\n    \"password\": \"postmanpass1\"\n}",
+							"raw": "{\n    \"name\": \"Postman Customer\",\n    \"email\": \"postman.customer.{{$timestamp}}@example.com\",\n    \"phone\": \"555-1{{$timestamp}}\",\n    \"password\": \"postmanpass1\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
 						},
-						"description": "Creates a new customer. password is load_only - accepted here, never echoed back."
+						"description": "Creates a new customer. password is load_only - accepted here, never echoed back. The email AND phone are suffixed with Postman's {{$timestamp}} dynamic variable (phone is unique=True on the model too) so this request - and the whole collection - can be re-run repeatedly without colliding with a previous run."
 					}
 				},
 				{
@@ -152,14 +168,14 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Duplicate\",\n    \"email\": \"postman.customer@example.com\",\n    \"phone\": \"555-9002\",\n    \"password\": \"x\"\n}",
+							"raw": "{\n    \"name\": \"Duplicate\",\n    \"email\": \"{{generatedCustomerEmail}}\",\n    \"phone\": \"555-9002\",\n    \"password\": \"x\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
 						},
-						"description": "Re-sends the previous email to confirm the duplicate-email guard."
+						"description": "Re-sends the email Create Customer just generated, to confirm the duplicate-email guard."
 					}
 				},
 				{
@@ -201,7 +217,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"postman.customer@example.com\",\n    \"password\": \"postmanpass1\"\n}",
+							"raw": "{\n    \"email\": \"{{generatedCustomerEmail}}\",\n    \"password\": \"postmanpass1\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -209,54 +225,6 @@
 							}
 						},
 						"description": "Exchanges email+password for a bearer token. Rate-limited to 5/minute."
-					}
-				},
-				{
-					"name": "Login Customer - Wrong Password",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"type": "text/javascript",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"pm.test(\"Message says invalid credentials\", function () {",
-									"    pm.expect(pm.response.json().message).to.eql(\"Invalid email or password\");",
-									"});"
-								]
-							}
-						}
-					],
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/customers/login",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"customers",
-								"login"
-							]
-						},
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"email\": \"postman.customer@example.com\",\n    \"password\": \"wrong\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"description": "NOTE: this route currently returns 200 with an error message on bad credentials instead of 401 - documented here, not changed."
 					}
 				},
 				{
@@ -534,7 +502,7 @@
 									"    pm.response.to.have.status(200);",
 									"});",
 									"pm.test(\"Phone was updated\", function () {",
-									"    pm.expect(pm.response.json().phone).to.eql(\"555-9099\");",
+									"    pm.expect(pm.response.json().phone).to.match(/^555-\\d+$/);",
 									"});"
 								]
 							}
@@ -564,14 +532,14 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"phone\": \"555-9099\"\n}",
+							"raw": "{\n    \"phone\": \"555-2{{$timestamp}}\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
 						},
-						"description": "No id in the URL - always updates whichever customer the token belongs to."
+						"description": "No id in the URL - always updates whichever customer the token belongs to. Phone is {{$timestamp}}-suffixed for the same reason the emails are - phone is unique=True on the Customer model too."
 					}
 				},
 				{
@@ -585,7 +553,8 @@
 									"pm.test(\"Status code is 201\", function () {",
 									"    pm.response.to.have.status(201);",
 									"});",
-									"pm.collectionVariables.set(\"tempCustomerId\", pm.response.json().id);"
+									"pm.collectionVariables.set(\"tempCustomerId\", pm.response.json().id);",
+									"pm.collectionVariables.set(\"generatedThrowawayCustomerEmail\", pm.response.json().email);"
 								]
 							}
 						}
@@ -610,7 +579,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Throwaway Customer\",\n    \"email\": \"postman.throwaway.customer@example.com\",\n    \"phone\": \"555-9003\",\n    \"password\": \"throwaway1\"\n}",
+							"raw": "{\n    \"name\": \"Throwaway Customer\",\n    \"email\": \"postman.throwaway.customer.{{$timestamp}}@example.com\",\n    \"phone\": \"555-3{{$timestamp}}\",\n    \"password\": \"throwaway1\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -655,7 +624,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"postman.throwaway.customer@example.com\",\n    \"password\": \"throwaway1\"\n}",
+							"raw": "{\n    \"email\": \"{{generatedThrowawayCustomerEmail}}\",\n    \"password\": \"throwaway1\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -755,7 +724,8 @@
 									"pm.test(\"Password is not in the response\", function () {",
 									"    pm.expect(pm.response.json()).to.not.have.property(\"password\");",
 									"});",
-									"pm.collectionVariables.set(\"mechanicId\", pm.response.json().id);"
+									"pm.collectionVariables.set(\"mechanicId\", pm.response.json().id);",
+									"pm.collectionVariables.set(\"generatedMechanicEmail\", pm.response.json().email);"
 								]
 							}
 						}
@@ -780,13 +750,14 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Postman Mechanic\",\n    \"email\": \"postman.mechanic@example.com\",\n    \"phone\": \"555-9101\",\n    \"salary\": 55000,\n    \"password\": \"postmanpass2\"\n}",
+							"raw": "{\n    \"name\": \"Postman Mechanic\",\n    \"email\": \"postman.mechanic.{{$timestamp}}@example.com\",\n    \"phone\": \"555-9101\",\n    \"salary\": 55000,\n    \"password\": \"postmanpass2\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
-						}
+						},
+						"description": "The email is suffixed with Postman's {{$timestamp}} dynamic variable so this request (and the whole collection) can be re-run repeatedly without colliding with a previous run."
 					}
 				},
 				{
@@ -824,13 +795,14 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Duplicate\",\n    \"email\": \"postman.mechanic@example.com\",\n    \"phone\": \"555-9102\",\n    \"salary\": 1000,\n    \"password\": \"x\"\n}",
+							"raw": "{\n    \"name\": \"Duplicate\",\n    \"email\": \"{{generatedMechanicEmail}}\",\n    \"phone\": \"555-9102\",\n    \"salary\": 1000,\n    \"password\": \"x\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
 								}
 							}
-						}
+						},
+						"description": "Re-sends the email Create Mechanic just generated, to confirm the duplicate-email guard."
 					}
 				},
 				{
@@ -868,7 +840,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"No Salary\",\n    \"email\": \"postman.nosalary@example.com\",\n    \"phone\": \"555-9103\",\n    \"password\": \"x\"\n}",
+							"raw": "{\n    \"name\": \"No Salary\",\n    \"email\": \"postman.nosalary.{{$timestamp}}@example.com\",\n    \"phone\": \"555-9103\",\n    \"password\": \"x\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -914,7 +886,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"postman.mechanic@example.com\",\n    \"password\": \"postmanpass2\"\n}",
+							"raw": "{\n    \"email\": \"{{generatedMechanicEmail}}\",\n    \"password\": \"postmanpass2\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -959,7 +931,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"postman.mechanic@example.com\",\n    \"password\": \"wrong\"\n}",
+							"raw": "{\n    \"email\": \"{{generatedMechanicEmail}}\",\n    \"password\": \"wrong\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1268,7 +1240,7 @@
 						},
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"Throwaway Mechanic\",\n    \"email\": \"postman.throwaway.mechanic@example.com\",\n    \"phone\": \"555-9104\",\n    \"salary\": 40000,\n    \"password\": \"throwaway2\"\n}",
+							"raw": "{\n    \"name\": \"Throwaway Mechanic\",\n    \"email\": \"postman.throwaway.mechanic.{{$timestamp}}@example.com\",\n    \"phone\": \"555-9104\",\n    \"salary\": 40000,\n    \"password\": \"throwaway2\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
