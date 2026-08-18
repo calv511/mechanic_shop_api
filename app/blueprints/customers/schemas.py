@@ -5,6 +5,7 @@ class CustomerSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = Customer
         dump_only = ("id",)
+        load_only = ("password",)
 
 customer_schema = CustomerSchema()
 customers_schema = CustomerSchema(many=True)
