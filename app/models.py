@@ -40,6 +40,11 @@ class Service_Ticket(Base):
         secondary=service_mechanics,
         back_populates='service_tickets'
     )
+    # Junction rows, not Inventory objects - each row carries its own quantity
+    parts: Mapped[List['Service_Ticket_Inventory']] = db.relationship(
+        back_populates='service_ticket',
+        cascade='all, delete-orphan'
+    )
 
 
 class Mechanic(Base):
@@ -53,3 +58,28 @@ class Mechanic(Base):
         secondary=service_mechanics,
         back_populates='mechanics'
     )
+
+
+class Inventory(Base):
+    __tablename__ = 'inventory'
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    price: Mapped[float] = mapped_column(db.Float, nullable=False)
+
+    # Junction rows linking this part to the tickets it was used on
+    ticket_parts: Mapped[List['Service_Ticket_Inventory']] = db.relationship(
+        back_populates='part',
+        cascade='all, delete-orphan'
+    )
+
+
+# Junction model (association object) - a plain db.Table cannot hold extra
+# columns, so quantity forces this to be a full model
+class Service_Ticket_Inventory(Base):
+    __tablename__ = 'service_ticket_inventory'
+    ticket_id: Mapped[int] = mapped_column(db.ForeignKey('service_tickets.id'), primary_key=True)
+    inventory_id: Mapped[int] = mapped_column(db.ForeignKey('inventory.id'), primary_key=True)
+    quantity: Mapped[int] = mapped_column(default=1)
+
+    service_ticket: Mapped['Service_Ticket'] = db.relationship(back_populates='parts')
+    part: Mapped['Inventory'] = db.relationship(back_populates='ticket_parts')
