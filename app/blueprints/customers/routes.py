@@ -1,10 +1,36 @@
-from .schemas import customer_schema, customers_schema
+from .schemas import customer_schema, customers_schema, login_schema
 from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import Customer, db
 from . import customers_bp
 from app.extensions import cache
+from app.utils.util import encode_token
+
+@customers_bp.route("/login", methods=['POST'])
+def login():
+    try:
+        credentials = login_schema.load(request.json)
+        email = credentials['email']
+        password = credentials['password']
+    except KeyError:
+        return jsonify({'messages': 'Invalid payload, expecting username and password'}), 400
+
+    query = select(Customer).where(Customer.email == email)
+    customer = db.session.execute(query).scalars().first()
+
+    if customer and customer.password == password:
+        token = encode_token(customer.id)
+
+        response = {
+            "status":"success",
+            "message": "succesfully logged in.",
+            "token": token
+        }
+
+        return jsonify(response), 200
+    else:
+        return jsonify("message": "Invalid email or password")
 
 @customers_bp.route("/", methods=['POST'])
 def create_customer():
