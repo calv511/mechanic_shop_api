@@ -2,10 +2,11 @@ from .schemas import customer_schema, customers_schema, login_schema
 from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
-from app.models import Customer, db
+from app.models import Customer, Service_Ticket, db
 from . import customers_bp
 from app.extensions import cache
 from app.utils.util import encode_token, token_required
+from app.blueprints.service_tickets.schemas import service_tickets_schema
 
 @customers_bp.route("/login", methods=['POST'])
 def login():
@@ -66,6 +67,16 @@ def get_customer(customer_id):
     if customer:
         return customer_schema.jsonify(customer), 200
     return jsonify({"error": "Customer not found."}), 404
+
+# GET THIS CUSTOMER'S SERVICE TICKETS
+@customers_bp.route("/my-tickets", methods=["GET"])
+@token_required
+def my_tickets(customer_id):
+    tickets = db.session.execute(
+        select(Service_Ticket).where(Service_Ticket.customer_id == customer_id)
+    ).scalars().all()
+
+    return service_tickets_schema.jsonify(tickets), 200
 
 # UPDATE SPECIFIC USER
 @customers_bp.route("/", methods=["PUT"])
