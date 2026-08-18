@@ -1,8 +1,8 @@
 from .schemas import mechanic_schema, mechanics_schema
 from flask import request, jsonify
 from marshmallow import ValidationError
-from sqlalchemy import select
-from app.models import Mechanic, db
+from sqlalchemy import select, func
+from app.models import Mechanic, service_mechanics, db
 from . import mechanics_bp
 
 # CREATE MECHANIC
@@ -30,6 +30,27 @@ def create_mechanic():
 def get_mechanics():
     mechanics = db.session.execute(select(Mechanic)).scalars().all()
     return mechanics_schema.jsonify(mechanics), 200
+
+# GET MECHANICS RANKED BY NUMBER OF TICKETS WORKED
+@mechanics_bp.route("/most-tickets", methods=['GET'])
+def get_mechanics_by_ticket_count():
+    ticket_count = func.count(service_mechanics.c.ticket_id).label('ticket_count')
+
+    query = (
+        select(Mechanic, ticket_count)
+        .outerjoin(service_mechanics, Mechanic.id == service_mechanics.c.mechanic_id)
+        .group_by(Mechanic.id)
+        .order_by(ticket_count.desc())
+    )
+    results = db.session.execute(query).all()
+
+    ranked_mechanics = []
+    for mechanic, count in results:
+        mechanic_data = mechanic_schema.dump(mechanic)
+        mechanic_data['ticket_count'] = count
+        ranked_mechanics.append(mechanic_data)
+
+    return jsonify(ranked_mechanics), 200
 
 # UPDATE SPECIFIC MECHANIC
 @mechanics_bp.route("/<int:mechanic_id>", methods=['PUT'])
