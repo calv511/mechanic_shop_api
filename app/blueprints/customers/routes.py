@@ -52,12 +52,28 @@ def create_customer():
     db.session.commit()
     return customer_schema.jsonify(new_customer), 201
 
-# GET ALL CUSTOMERS
+# GET ALL CUSTOMERS (PAGINATED)
 @customers_bp.route("/", methods=['GET'])
-@cache.cached(timeout=60)
+@cache.cached(timeout=60, query_string=True)
 def get_customers():
-    customers = db.session.execute(select(Customer)).scalars().all()
-    return customers_schema.jsonify(customers)
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 10, type=int)
+
+    pagination = db.paginate(
+        select(Customer),
+        page=page,
+        per_page=per_page,
+        max_per_page=100,
+        error_out=False
+    )
+
+    return jsonify({
+        "customers": customers_schema.dump(pagination.items),
+        "page": pagination.page,
+        "per_page": pagination.per_page,
+        "total_pages": pagination.pages,
+        "total_customers": pagination.total
+    }), 200
 
 # GET SPECIFIC CUSTOMER
 @customers_bp.route("/<int:customer_id>", methods=['GET'])
