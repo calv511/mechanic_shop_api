@@ -2,6 +2,7 @@ from .schemas import customer_schema, customers_schema, login_schema
 from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
+from werkzeug.security import generate_password_hash, check_password_hash
 from app.models import Customer, Service_Ticket, db
 from . import customers_bp
 from app.extensions import cache
@@ -20,7 +21,7 @@ def login():
     query = select(Customer).where(Customer.email == email)
     customer = db.session.execute(query).scalars().first()
 
-    if customer and customer.password == password:
+    if customer and check_password_hash(customer.password, password):
         token = encode_token(customer.id)
 
         response = {
@@ -46,6 +47,8 @@ def create_customer():
 
     if existing_customer:
         return jsonify({"error": "Email already associated with an account."}), 400
+
+    customer_data['password'] = generate_password_hash(customer_data['password'])
 
     new_customer = Customer(**customer_data)
     db.session.add(new_customer)
@@ -109,6 +112,8 @@ def update_customer(customer_id):
         return jsonify(e.messages), 400
 
     for key, value in customer_data.items():
+        if key == 'password':
+            value = generate_password_hash(value)
         setattr(customer, key, value)
 
     db.session.commit()
