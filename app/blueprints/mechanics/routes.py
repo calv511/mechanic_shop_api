@@ -1,8 +1,11 @@
-from .schemas import mechanic_schema, mechanics_schema
+from .schemas import mechanic_schema, mechanics_schema, mechanic_login_schema
 from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select, func
+from werkzeug.security import generate_password_hash, check_password_hash
 from app.models import Mechanic, service_mechanics, db
+from app.extensions import limiter
+from app.utils.util import encode_mechanic_token, mechanic_token_required
 from . import mechanics_bp
 
 # CREATE MECHANIC
@@ -20,10 +23,34 @@ def create_mechanic():
     if existing_mechanic:
         return jsonify({"error": "Email already associated with an account."}), 400
 
+    mechanic_data['password'] = generate_password_hash(mechanic_data['password'])
+
     new_mechanic = Mechanic(**mechanic_data)
     db.session.add(new_mechanic)
     db.session.commit()
     return mechanic_schema.jsonify(new_mechanic), 201
+
+# MECHANIC LOGIN
+@mechanics_bp.route("/login", methods=['POST'])
+@limiter.limit("5 per minute") # Same brute-force protection as customer login
+def mechanic_login():
+    try:
+        credentials = mechanic_login_schema.load(request.get_json())
+    except ValidationError as e:
+        return jsonify(e.messages), 400
+
+    query = select(Mechanic).where(Mechanic.email == credentials['email'])
+    mechanic = db.session.execute(query).scalars().first()
+
+    if mechanic and check_password_hash(mechanic.password, credentials['password']):
+        token = encode_mechanic_token(mechanic.id)
+        return jsonify({
+            "status": "success",
+            "message": "successfully logged in.",
+            "token": token
+        }), 200
+
+    return jsonify({"message": "Invalid email or password"}), 401
 
 # GET ALL MECHANICS
 @mechanics_bp.route("/", methods=['GET'])
@@ -52,9 +79,10 @@ def get_mechanics_by_ticket_count():
 
     return jsonify(ranked_mechanics), 200
 
-# UPDATE SPECIFIC MECHANIC
+# UPDATE SPECIFIC MECHANIC (any logged-in mechanic may update mechanic records)
 @mechanics_bp.route("/<int:mechanic_id>", methods=['PUT'])
-def update_mechanic(mechanic_id):
+@mechanic_token_required
+def update_mechanic(current_mechanic_id, mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)
 
     if not mechanic:
@@ -66,14 +94,17 @@ def update_mechanic(mechanic_id):
         return jsonify(e.messages), 400
 
     for key, value in mechanic_data.items():
+        if key == 'password':
+            value = generate_password_hash(value)
         setattr(mechanic, key, value)
 
     db.session.commit()
     return mechanic_schema.jsonify(mechanic), 200
 
-# DELETE SPECIFIC MECHANIC
+# DELETE SPECIFIC MECHANIC (any logged-in mechanic may remove a mechanic record)
 @mechanics_bp.route("/<int:mechanic_id>", methods=['DELETE'])
-def delete_mechanic(mechanic_id):
+@mechanic_token_required
+def delete_mechanic(current_mechanic_id, mechanic_id):
     mechanic = db.session.get(Mechanic, mechanic_id)
 
     if not mechanic:

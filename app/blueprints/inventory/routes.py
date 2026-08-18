@@ -3,11 +3,13 @@ from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
 from app.models import Inventory, db
+from app.utils.util import mechanic_token_required
 from . import inventory_bp
 
-# CREATE PART
+# CREATE PART (mechanic-only: shop staff manage the catalog, not customers)
 @inventory_bp.route("/", methods=['POST'])
-def create_part():
+@mechanic_token_required
+def create_part(current_mechanic_id):
     try:
         part_data = inventory_schema.load(request.get_json())
     except ValidationError as e:
@@ -34,9 +36,10 @@ def get_part(part_id):
 
     return inventory_schema.jsonify(part), 200
 
-# UPDATE SPECIFIC PART
+# UPDATE SPECIFIC PART (mechanic-only)
 @inventory_bp.route("/<int:part_id>", methods=['PUT'])
-def update_part(part_id):
+@mechanic_token_required
+def update_part(current_mechanic_id, part_id):
     part = db.session.get(Inventory, part_id)
 
     if not part:
@@ -54,9 +57,10 @@ def update_part(part_id):
     db.session.commit()
     return inventory_schema.jsonify(part), 200
 
-# DELETE SPECIFIC PART
+# DELETE SPECIFIC PART (mechanic-only)
 @inventory_bp.route("/<int:part_id>", methods=['DELETE'])
-def delete_part(part_id):
+@mechanic_token_required
+def delete_part(current_mechanic_id, part_id):
     part = db.session.get(Inventory, part_id)
 
     if not part:
