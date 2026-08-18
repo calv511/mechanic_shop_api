@@ -10,8 +10,8 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 def encode_token(user_id):
     payload = {
-        'exp': datetime.now(timezone.utc) + timedelta(days=0, hours=1) # Set expiration time
-        'iat': datetime.now(timezone.utc) # Issues at
+        'exp': datetime.now(timezone.utc) + timedelta(days=0, hours=1), # Set expiration time
+        'iat': datetime.now(timezone.utc), # Issues at
         'sub': user_id 
     }
 

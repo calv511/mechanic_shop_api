@@ -30,7 +30,7 @@ def login():
 
         return jsonify(response), 200
     else:
-        return jsonify("message": "Invalid email or password")
+        return jsonify({'message': "Invalid email or password"})
 
 @customers_bp.route("/", methods=['POST'])
 def create_customer():
