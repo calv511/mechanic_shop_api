@@ -2,7 +2,7 @@ from .schemas import service_ticket_schema, service_tickets_schema, edit_service
 from flask import request, jsonify
 from marshmallow import ValidationError
 from sqlalchemy import select
-from app.models import Service_Ticket, Mechanic, Customer, db
+from app.models import Service_Ticket, Mechanic, Customer, Inventory, Service_Ticket_Inventory, db
 from . import service_tickets_bp
 
 # CREATE SERVICE TICKET
@@ -89,6 +89,43 @@ def edit_service_ticket(ticket_id):
 
         if mechanic and mechanic in service_ticket.mechanics:
             service_ticket.mechanics.remove(mechanic)
+
+    db.session.commit()
+    return service_ticket_schema.jsonify(service_ticket), 200
+
+# ADD A PART TO A SERVICE TICKET
+@service_tickets_bp.route("/<int:ticket_id>/add-part/<int:part_id>", methods=['POST'])
+def add_part_to_ticket(ticket_id, part_id):
+    service_ticket = db.session.get(Service_Ticket, ticket_id)
+    part = db.session.get(Inventory, part_id)
+
+    if not service_ticket:
+        return jsonify({"error": "Service ticket not found."}), 404
+    if not part:
+        return jsonify({"error": "Part not found."}), 404
+
+    # Optional {"quantity": n} body; defaults to 1 if no body or key is sent
+    body = request.get_json(silent=True) or {}
+    quantity = body.get('quantity', 1)
+
+    if not isinstance(quantity, int) or quantity < 1:
+        return jsonify({"error": "quantity must be a positive integer."}), 400
+
+    # ticket_id + inventory_id is a composite primary key on the junction
+    # table, so this part can only appear once per ticket - find that row
+    existing_link = db.session.execute(
+        select(Service_Ticket_Inventory).where(
+            Service_Ticket_Inventory.ticket_id == ticket_id,
+            Service_Ticket_Inventory.inventory_id == part_id
+        )
+    ).scalars().first()
+
+    if existing_link:
+        # Part is already on this ticket - add to the existing quantity
+        # instead of inserting a duplicate row
+        existing_link.quantity += quantity
+    else:
+        service_ticket.parts.append(Service_Ticket_Inventory(part=part, quantity=quantity))
 
     db.session.commit()
     return service_ticket_schema.jsonify(service_ticket), 200

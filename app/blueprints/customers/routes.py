@@ -5,11 +5,12 @@ from sqlalchemy import select
 from werkzeug.security import generate_password_hash, check_password_hash
 from app.models import Customer, Service_Ticket, db
 from . import customers_bp
-from app.extensions import cache
+from app.extensions import cache, limiter
 from app.utils.util import encode_token, token_required
 from app.blueprints.service_tickets.schemas import service_tickets_schema
 
 @customers_bp.route("/login", methods=['POST'])
+@limiter.limit("5 per minute") # Stricter than the app default - slows down password-guessing
 def login():
     try:
         credentials = login_schema.load(request.json)
