@@ -16,6 +16,33 @@ produces:
   - "application/json"
 paths:
   /customers/:
+    get:
+      tags:
+        - customers
+      summary: "Get all customers"
+      description: "Return a paginated list of customer accounts."
+      parameters:
+        - in: "query"
+          name: "page"
+          type: "integer"
+          format: "int32"
+          default: 1
+          minimum: 1
+          description: "The page number to return."
+        - in: "query"
+          name: "per_page"
+          type: "integer"
+          format: "int32"
+          default: 10
+          minimum: 1
+          maximum: 100
+          description: "The number of customers per page."
+      responses:
+        "200":
+          description: "Paginated list of customers"
+          schema:
+            $ref: "#/definitions/GetAllCustomersResponse"
+
     post:
       tags:
         - customers
@@ -79,6 +106,37 @@ paths:
           description: "Invalid email or password"
 
 definitions:
+  GetAllCustomersResponse:
+    type: "object"
+    required:
+      - "customers"
+      - "page"
+      - "per_page"
+      - "total_pages"
+      - "total_customers"
+    properties:
+      customers:
+        type: "array"
+        description: "Customers included in the requested page."
+        items:
+          $ref: "#/definitions/CreaterCustomerResponse"
+      page:
+        type: "integer"
+        format: "int32"
+        description: "The current page number."
+      per_page:
+        type: "integer"
+        format: "int32"
+        description: "The number of customers requested per page."
+      total_pages:
+        type: "integer"
+        format: "int32"
+        description: "The total number of available pages."
+      total_customers:
+        type: "integer"
+        format: "int32"
+        description: "The total number of customers."
+
   CreateCustomerPayload:
     type: "object"
     required:
