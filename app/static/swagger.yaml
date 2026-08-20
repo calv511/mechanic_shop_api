@@ -14,5 +14,81 @@ consumes:
   - "application/json"
 produces:
   - "application/json"
-paths: {}
-definitions: {}
+paths:
+  /customers/login:
+    post:
+      tags:
+        - customers
+      summary: "Authenticate a customer"
+      description: "Authenticate a customer with an email address and password."
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Customer login credentials"
+          required: true
+          schema:
+            $ref: "#/definitions/LoginCredentials"
+      responses:
+        200:
+          description: "Login successful"
+          schema:
+            $ref: "#/definitions/LoginResponse"
+        401:
+          description: "Invalid email or password"
+
+  /mechanics/login:
+    post:
+      tags:
+        - mechanics
+      summary: "Authenticate a mechanic"
+      description: "Authenticate a mechanic with an email address and password."
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Mechanic login credentials"
+          required: true
+          schema:
+            $ref: "#/definitions/LoginCredentials"
+      responses:
+        200:
+          description: "Login successful"
+          schema:
+            $ref: "#/definitions/LoginResponse"
+        401:
+          description: "Invalid email or password"
+
+definitions:
+  LoginCredentials:
+    type: "object"
+    required:
+      - "email"
+      - "password"
+    properties:
+      email:
+        type: "string"
+        format: "email"
+        description: "The account email address."
+        example: "customer@example.com"
+      password:
+        type: "string"
+        format: "password"
+        description: "The account password."
+        example: "secret123"
+
+  LoginResponse:
+    type: "object"
+    required:
+      - "status"
+      - "message"
+      - "token"
+    properties:
+      token:
+        type: "string"
+        description: "Bearer JWT to use for authenticated requests."
+      message:
+        type: "string"
+        description: "Result message for the login request."
+      status:
+        type: "string"
+        description: "Login result status."
+        example: "success"
