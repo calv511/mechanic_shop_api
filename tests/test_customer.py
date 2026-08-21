@@ -21,6 +21,16 @@ class TestCustomer(unittest.TestCase):
         self.token = encode_token(1)
         self.client = self.app.test_client()
 
+    def _login_and_get_token(self):
+        credentials = {
+            "email": "test@email.com",
+            "password": "test"
+        }
+
+        response = self.client.post('/customers/login', json=credentials)
+        self.assertEqual(response.status_code, 200)
+        return response.json['token']
+
     def test_create_customer(self):
         customer_payload = {
             "name": "John Doe",
@@ -53,3 +63,25 @@ class TestCustomer(unittest.TestCase):
         response = self.client.post('/customers/login', json=credentials)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json['status'], 'success')
+
+    def test_invalid_login(self):
+        credentials = {
+            "email": "bad_email@email.com",
+            "password": "bad_pw"
+        }
+
+        response = self.client.post('/customers/login', json=credentials)
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json['message'], 'Invalid email or password')
+
+    def test_update_customer(self):
+        update_payload = {
+            "name": "Johnny"
+        }
+
+        headers = {'Authorization': "Bearer " + self._login_and_get_token()}
+
+        response = self.client.put('/customers/', json=update_payload, headers=headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json['name'], 'Johnny')
+        self.assertEqual(response.json['email'], 'test@email.com')
