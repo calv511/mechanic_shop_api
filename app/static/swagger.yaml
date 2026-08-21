@@ -71,6 +71,17 @@ paths:
           description: "Paginated list of customers"
           schema:
             $ref: "#/definitions/GetAllCustomersResponse"
+          examples:
+            application/json:
+              customers:
+              - id: 1
+                name: Alex Morgan
+                email: alex.morgan@example.com
+                phone: 555-0100
+              page: 1
+              per_page: 10
+              total_pages: 3
+              total_customers: 27
 
     post:
       tags:
@@ -90,6 +101,12 @@ paths:
           description: "Customer created successfully"
           schema:
             $ref: "#/definitions/CustomerResponse"
+          examples:
+            application/json:
+              id: 1
+              name: Alex Morgan
+              email: alex.morgan@example.com
+              phone: 555-0100
         "400":
           description: >-
             The email is already associated with an account, in which case the
@@ -97,6 +114,9 @@ paths:
             case the body is a ValidationErrorResponse.
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Email already associated with an account.
 
     put:
       tags:
@@ -120,6 +140,12 @@ paths:
           description: "Customer updated successfully"
           schema:
             $ref: "#/definitions/CustomerResponse"
+          examples:
+            application/json:
+              id: 1
+              name: Alex Morgan
+              email: alex.morgan@example.com
+              phone: 555-0100
         "400":
           description: >-
             Missing, expired, invalid, or malformed bearer token, in which case
@@ -127,10 +153,16 @@ paths:
             case the body is a ValidationErrorResponse.
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: invalid token
         "404":
           description: "Customer not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Customer not found.
 
     delete:
       tags:
@@ -144,14 +176,23 @@ paths:
           description: "Customer deleted successfully"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: 'Customer id: 1, successfully deleted.'
         "400":
           description: "Missing, expired, or invalid bearer token"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: invalid token
         "404":
           description: "Customer not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Customer not found.
 
   /customers/{customer_id}:
     get:
@@ -172,10 +213,19 @@ paths:
           description: "The requested customer"
           schema:
             $ref: "#/definitions/CustomerResponse"
+          examples:
+            application/json:
+              id: 1
+              name: Alex Morgan
+              email: alex.morgan@example.com
+              phone: 555-0100
         "404":
           description: "Customer not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Customer not found.
 
   /customers/login:
     post:
@@ -198,14 +248,26 @@ paths:
           description: "Login successful"
           schema:
             $ref: "#/definitions/LoginResponse"
+          examples:
+            application/json:
+              status: success
+              message: successfully logged in.
+              token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         "400":
           description: "The payload failed validation"
           schema:
             $ref: "#/definitions/ValidationErrorResponse"
+          examples:
+            application/json:
+              password:
+                - Missing data for required field.
         "401":
           description: "Invalid email or password"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: Invalid email or password
         "429":
           description: "Rate limit exceeded (more than 5 login attempts per minute)"
 
@@ -226,10 +288,32 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/ServiceTicketResponse"
+          examples:
+            application/json:
+              - id: 1
+                VIN: 1HGCM82633A004352
+                service_date: '2025-03-14'
+                service_desc: Replaced front brake pads and rotors.
+                customer_id: 1
+                mechanics:
+                - id: 1
+                  name: Jordan Reyes
+                  email: jordan.reyes@example.com
+                  phone: 555-0200
+                  salary: 62000.0
+                parts:
+                - part:
+                    id: 1
+                    name: Brake Pad Set
+                    price: 89.99
+                  quantity: 2
         "400":
           description: "Missing, expired, or invalid bearer token"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: invalid token
 
   /mechanics/:
     get:
@@ -245,6 +329,13 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/MechanicResponse"
+          examples:
+            application/json:
+              - id: 1
+                name: Jordan Reyes
+                email: jordan.reyes@example.com
+                phone: 555-0200
+                salary: 62000.0
 
     post:
       tags:
@@ -266,6 +357,13 @@ paths:
           description: "Mechanic created successfully"
           schema:
             $ref: "#/definitions/MechanicResponse"
+          examples:
+            application/json:
+              id: 1
+              name: Jordan Reyes
+              email: jordan.reyes@example.com
+              phone: 555-0200
+              salary: 62000.0
         "400":
           description: >-
             The email is already associated with an account, in which case the
@@ -273,6 +371,9 @@ paths:
             case the body is a ValidationErrorResponse.
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Email already associated with an account.
 
   /mechanics/login:
     post:
@@ -295,14 +396,26 @@ paths:
           description: "Login successful"
           schema:
             $ref: "#/definitions/LoginResponse"
+          examples:
+            application/json:
+              status: success
+              message: successfully logged in.
+              token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         "400":
           description: "The payload failed validation"
           schema:
             $ref: "#/definitions/ValidationErrorResponse"
+          examples:
+            application/json:
+              password:
+                - Missing data for required field.
         "401":
           description: "Invalid email or password"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: Invalid email or password
         "429":
           description: "Rate limit exceeded (more than 5 login attempts per minute)"
 
@@ -323,6 +436,14 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/MechanicTicketCountResponse"
+          examples:
+            application/json:
+              - id: 1
+                name: Jordan Reyes
+                email: jordan.reyes@example.com
+                phone: 555-0200
+                salary: 62000.0
+                ticket_count: 7
 
   /mechanics/{mechanic_id}:
     put:
@@ -354,6 +475,13 @@ paths:
           description: "Mechanic updated successfully"
           schema:
             $ref: "#/definitions/MechanicResponse"
+          examples:
+            application/json:
+              id: 1
+              name: Jordan Reyes
+              email: jordan.reyes@example.com
+              phone: 555-0200
+              salary: 62000.0
         "400":
           description: >-
             Missing, expired, invalid, or malformed bearer token, in which case
@@ -361,14 +489,23 @@ paths:
             case the body is a ValidationErrorResponse.
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: invalid token
         "403":
           description: "The bearer token is valid but is not a mechanic token"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: This action requires a mechanic account.
         "404":
           description: "Mechanic not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Mechanic not found.
 
     delete:
       tags:
@@ -391,18 +528,30 @@ paths:
           description: "Mechanic deleted successfully"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: 'Mechanic id: 1, successfully deleted.'
         "400":
           description: "Missing, expired, or invalid bearer token"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: invalid token
         "403":
           description: "The bearer token is valid but is not a mechanic token"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: This action requires a mechanic account.
         "404":
           description: "Mechanic not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Mechanic not found.
 
   /service-tickets/:
     get:
@@ -420,6 +569,25 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/ServiceTicketResponse"
+          examples:
+            application/json:
+              - id: 1
+                VIN: 1HGCM82633A004352
+                service_date: '2025-03-14'
+                service_desc: Replaced front brake pads and rotors.
+                customer_id: 1
+                mechanics:
+                - id: 1
+                  name: Jordan Reyes
+                  email: jordan.reyes@example.com
+                  phone: 555-0200
+                  salary: 62000.0
+                parts:
+                - part:
+                    id: 1
+                    name: Brake Pad Set
+                    price: 89.99
+                  quantity: 2
 
     post:
       tags:
@@ -442,14 +610,42 @@ paths:
           description: "Service ticket created successfully"
           schema:
             $ref: "#/definitions/ServiceTicketResponse"
+          examples:
+            application/json:
+              id: 1
+              VIN: 1HGCM82633A004352
+              service_date: '2025-03-14'
+              service_desc: Replaced front brake pads and rotors.
+              customer_id: 1
+              mechanics:
+              - id: 1
+                name: Jordan Reyes
+                email: jordan.reyes@example.com
+                phone: 555-0200
+                salary: 62000.0
+              parts:
+              - part:
+                  id: 1
+                  name: Brake Pad Set
+                  price: 89.99
+                quantity: 2
         "400":
           description: "The payload failed validation"
           schema:
             $ref: "#/definitions/ValidationErrorResponse"
+          examples:
+            application/json:
+              VIN:
+                - Missing data for required field.
+              service_date:
+                - Not a valid date.
         "404":
           description: "No customer exists with the given customer_id"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Customer not found.
 
   /service-tickets/{ticket_id}/assign-mechanic/{mechanic_id}:
     put:
@@ -478,14 +674,39 @@ paths:
           description: "The updated service ticket, including the newly assigned mechanic"
           schema:
             $ref: "#/definitions/ServiceTicketResponse"
+          examples:
+            application/json:
+              id: 1
+              VIN: 1HGCM82633A004352
+              service_date: '2025-03-14'
+              service_desc: Replaced front brake pads and rotors.
+              customer_id: 1
+              mechanics:
+              - id: 1
+                name: Jordan Reyes
+                email: jordan.reyes@example.com
+                phone: 555-0200
+                salary: 62000.0
+              parts:
+              - part:
+                  id: 1
+                  name: Brake Pad Set
+                  price: 89.99
+                quantity: 2
         "400":
           description: "The mechanic is already assigned to this service ticket"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Mechanic already assigned to this service ticket.
         "404":
           description: "The service ticket or the mechanic was not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Service ticket not found.
 
   /service-tickets/{ticket_id}/remove-mechanic/{mechanic_id}:
     put:
@@ -514,14 +735,39 @@ paths:
           description: "The updated service ticket, without the removed mechanic"
           schema:
             $ref: "#/definitions/ServiceTicketResponse"
+          examples:
+            application/json:
+              id: 1
+              VIN: 1HGCM82633A004352
+              service_date: '2025-03-14'
+              service_desc: Replaced front brake pads and rotors.
+              customer_id: 1
+              mechanics:
+              - id: 1
+                name: Jordan Reyes
+                email: jordan.reyes@example.com
+                phone: 555-0200
+                salary: 62000.0
+              parts:
+              - part:
+                  id: 1
+                  name: Brake Pad Set
+                  price: 89.99
+                quantity: 2
         "400":
           description: "The mechanic is not assigned to this service ticket"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Mechanic is not assigned to this service ticket.
         "404":
           description: "The service ticket or the mechanic was not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Service ticket not found.
 
   /service-tickets/{ticket_id}/edit:
     put:
@@ -554,14 +800,40 @@ paths:
           description: "The updated service ticket"
           schema:
             $ref: "#/definitions/ServiceTicketResponse"
+          examples:
+            application/json:
+              id: 1
+              VIN: 1HGCM82633A004352
+              service_date: '2025-03-14'
+              service_desc: Replaced front brake pads and rotors.
+              customer_id: 1
+              mechanics:
+              - id: 1
+                name: Jordan Reyes
+                email: jordan.reyes@example.com
+                phone: 555-0200
+                salary: 62000.0
+              parts:
+              - part:
+                  id: 1
+                  name: Brake Pad Set
+                  price: 89.99
+                quantity: 2
         "400":
           description: "The payload failed validation"
           schema:
             $ref: "#/definitions/ValidationErrorResponse"
+          examples:
+            application/json:
+              add_ids:
+                - Not a valid list.
         "404":
           description: "Service ticket not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Service ticket not found.
 
   /service-tickets/{ticket_id}/add-part/{part_id}:
     post:
@@ -599,14 +871,39 @@ paths:
           description: "The updated service ticket, including the added part and its quantity"
           schema:
             $ref: "#/definitions/ServiceTicketResponse"
+          examples:
+            application/json:
+              id: 1
+              VIN: 1HGCM82633A004352
+              service_date: '2025-03-14'
+              service_desc: Replaced front brake pads and rotors.
+              customer_id: 1
+              mechanics:
+              - id: 1
+                name: Jordan Reyes
+                email: jordan.reyes@example.com
+                phone: 555-0200
+                salary: 62000.0
+              parts:
+              - part:
+                  id: 1
+                  name: Brake Pad Set
+                  price: 89.99
+                quantity: 2
         "400":
           description: "quantity was not a positive integer"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: quantity must be a positive integer.
         "404":
           description: "The service ticket or the part was not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Service ticket not found.
 
   /inventory/:
     get:
@@ -622,6 +919,11 @@ paths:
             type: "array"
             items:
               $ref: "#/definitions/InventoryPartResponse"
+          examples:
+            application/json:
+              - id: 1
+                name: Brake Pad Set
+                price: 89.99
 
     post:
       tags:
@@ -645,6 +947,11 @@ paths:
           description: "Part created successfully"
           schema:
             $ref: "#/definitions/InventoryPartResponse"
+          examples:
+            application/json:
+              id: 1
+              name: Brake Pad Set
+              price: 89.99
         "400":
           description: >-
             Missing, expired, invalid, or malformed bearer token, in which case
@@ -652,10 +959,16 @@ paths:
             the body is a ValidationErrorResponse.
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: invalid token
         "403":
           description: "The bearer token is valid but is not a mechanic token"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: This action requires a mechanic account.
 
   /inventory/{part_id}:
     get:
@@ -676,10 +989,18 @@ paths:
           description: "The requested part"
           schema:
             $ref: "#/definitions/InventoryPartResponse"
+          examples:
+            application/json:
+              id: 1
+              name: Brake Pad Set
+              price: 89.99
         "404":
           description: "Part not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Part not found.
 
     put:
       tags:
@@ -708,6 +1029,11 @@ paths:
           description: "Part updated successfully"
           schema:
             $ref: "#/definitions/InventoryPartResponse"
+          examples:
+            application/json:
+              id: 1
+              name: Brake Pad Set
+              price: 89.99
         "400":
           description: >-
             Missing, expired, invalid, or malformed bearer token, in which case
@@ -715,14 +1041,23 @@ paths:
             the body is a ValidationErrorResponse.
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: invalid token
         "403":
           description: "The bearer token is valid but is not a mechanic token"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: This action requires a mechanic account.
         "404":
           description: "Part not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Part not found.
 
     delete:
       tags:
@@ -745,18 +1080,30 @@ paths:
           description: "Part deleted successfully"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: 'Part id: 1, successfully deleted.'
         "400":
           description: "Missing, expired, or invalid bearer token"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: invalid token
         "403":
           description: "The bearer token is valid but is not a mechanic token"
           schema:
             $ref: "#/definitions/MessageResponse"
+          examples:
+            application/json:
+              message: This action requires a mechanic account.
         "404":
           description: "Part not found"
           schema:
             $ref: "#/definitions/ErrorResponse"
+          examples:
+            application/json:
+              error: Part not found.
 
 definitions:
   CustomerResponse:
