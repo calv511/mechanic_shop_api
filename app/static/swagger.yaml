@@ -605,6 +605,156 @@ paths:
           schema:
             $ref: "#/definitions/ErrorResponse"
 
+  /inventory/:
+    get:
+      tags:
+        - inventory
+      summary: "Get all parts"
+      description: "Return every part in the shop's catalog. Not paginated."
+      security: []
+      responses:
+        "200":
+          description: "All parts in the catalog"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/InventoryPartResponse"
+
+    post:
+      tags:
+        - inventory
+      summary: "Create a part"
+      description: >-
+        Add a new part to the catalog. Restricted to mechanics, since shop staff
+        rather than customers manage inventory. Part names are not required to
+        be unique.
+      security:
+        - mechanicBearer: []
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Information required to create a part"
+          required: true
+          schema:
+            $ref: "#/definitions/CreateInventoryPayload"
+      responses:
+        "201":
+          description: "Part created successfully"
+          schema:
+            $ref: "#/definitions/InventoryPartResponse"
+        "400":
+          description: >-
+            Missing, expired, invalid, or malformed bearer token, in which case
+            the body is a MessageResponse, or invalid part data, in which case
+            the body is a ValidationErrorResponse.
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "403":
+          description: "The bearer token is valid but is not a mechanic token"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+
+  /inventory/{part_id}:
+    get:
+      tags:
+        - inventory
+      summary: "Get a single part"
+      description: "Return one part from the catalog by its ID."
+      security: []
+      parameters:
+        - in: "path"
+          name: "part_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the part to return."
+      responses:
+        "200":
+          description: "The requested part"
+          schema:
+            $ref: "#/definitions/InventoryPartResponse"
+        "404":
+          description: "Part not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    put:
+      tags:
+        - inventory
+      summary: "Update a part"
+      description: >-
+        Partially update a part in the catalog. Only the fields present in the
+        body are changed. Restricted to mechanics.
+      security:
+        - mechanicBearer: []
+      parameters:
+        - in: "path"
+          name: "part_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the part to update."
+        - in: "body"
+          name: "body"
+          description: "Part fields to update. Every field is optional."
+          required: true
+          schema:
+            $ref: "#/definitions/UpdateInventoryPayload"
+      responses:
+        "200":
+          description: "Part updated successfully"
+          schema:
+            $ref: "#/definitions/InventoryPartResponse"
+        "400":
+          description: >-
+            Missing, expired, invalid, or malformed bearer token, in which case
+            the body is a MessageResponse, or invalid part data, in which case
+            the body is a ValidationErrorResponse.
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "403":
+          description: "The bearer token is valid but is not a mechanic token"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "404":
+          description: "Part not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    delete:
+      tags:
+        - inventory
+      summary: "Delete a part"
+      description: >-
+        Remove a part from the catalog. Restricted to mechanics. Deleting a part
+        also removes it from every service ticket it was recorded on.
+      security:
+        - mechanicBearer: []
+      parameters:
+        - in: "path"
+          name: "part_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the part to delete."
+      responses:
+        "200":
+          description: "Part deleted successfully"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "400":
+          description: "Missing, expired, or invalid bearer token"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "403":
+          description: "The bearer token is valid but is not a mechanic token"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "404":
+          description: "Part not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
 definitions:
   CustomerResponse:
     type: "object"
@@ -1062,3 +1212,36 @@ definitions:
         default: 1
         description: "The number of units used. Must be a positive integer."
         example: 2
+
+  CreateInventoryPayload:
+    type: "object"
+    description: "Every field is required when adding a part to the catalog."
+    required:
+      - "name"
+      - "price"
+    properties:
+      name:
+        type: "string"
+        description: "The part's name."
+        example: "Brake Pad Set"
+      price:
+        type: "number"
+        format: "double"
+        description: "The part's unit price."
+        example: 89.99
+
+  UpdateInventoryPayload:
+    type: "object"
+    description: >-
+      A partial update. Send only the fields you want to change; omitted fields
+      are left untouched.
+    properties:
+      name:
+        type: "string"
+        description: "The part's new name."
+        example: "Brake Pad Set (Ceramic)"
+      price:
+        type: "number"
+        format: "double"
+        description: "The part's new unit price."
+        example: 104.50
