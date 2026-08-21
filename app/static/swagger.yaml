@@ -195,14 +195,17 @@ paths:
             $ref: "#/definitions/LoginCredentials"
       responses:
         "200":
-          description: >-
-            Login successful, returning a LoginResponse. NOTE: the current
-            implementation also returns 200 with a MessageResponse body of
-            `{"message": "Invalid email or password"}` when the credentials are
-            wrong, because the failure branch omits a status code. This should
-            be a 401, as it is on POST /mechanics/login.
+          description: "Login successful"
           schema:
             $ref: "#/definitions/LoginResponse"
+        "400":
+          description: "The payload failed validation"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+        "401":
+          description: "Invalid email or password"
+          schema:
+            $ref: "#/definitions/MessageResponse"
         "429":
           description: "Rate limit exceeded (more than 5 login attempts per minute)"
 

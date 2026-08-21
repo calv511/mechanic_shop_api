@@ -12,28 +12,27 @@ from app.blueprints.service_tickets.schemas import service_tickets_schema
 @customers_bp.route("/login", methods=['POST'])
 @limiter.limit("5 per minute") # Stricter than the app default - slows down password-guessing
 def login():
+    # load() raises ValidationError, not KeyError, when a field is missing
     try:
-        credentials = login_schema.load(request.json)
-        email = credentials['email']
-        password = credentials['password']
-    except KeyError:
-        return jsonify({'messages': 'Invalid payload, expecting username and password'}), 400
+        credentials = login_schema.load(request.get_json())
+    except ValidationError as e:
+        return jsonify(e.messages), 400
 
-    query = select(Customer).where(Customer.email == email)
+    query = select(Customer).where(Customer.email == credentials['email'])
     customer = db.session.execute(query).scalars().first()
 
-    if customer and check_password_hash(customer.password, password):
+    if customer and check_password_hash(customer.password, credentials['password']):
         token = encode_token(customer.id)
 
         response = {
-            "status":"success",
-            "message": "succesfully logged in.",
+            "status": "success",
+            "message": "successfully logged in.",
             "token": token
         }
 
         return jsonify(response), 200
-    else:
-        return jsonify({'message': "Invalid email or password"})
+
+    return jsonify({'message': "Invalid email or password"}), 401
 
 @customers_bp.route("/", methods=['POST'])
 def create_customer():
