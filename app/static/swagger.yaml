@@ -401,6 +401,210 @@ paths:
           schema:
             $ref: "#/definitions/ErrorResponse"
 
+  /service-tickets/:
+    get:
+      tags:
+        - service tickets
+      summary: "Get all service tickets"
+      description: >-
+        Return every service ticket, including the mechanics assigned and the
+        parts used on each. Not paginated.
+      security: []
+      responses:
+        "200":
+          description: "All service tickets"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/ServiceTicketResponse"
+
+    post:
+      tags:
+        - service tickets
+      summary: "Create a service ticket"
+      description: >-
+        Open a service ticket for an existing customer. The ticket is created
+        with no mechanics assigned and no parts attached; use the assign-mechanic
+        and add-part endpoints to fill those in.
+      security: []
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Information required to open a service ticket"
+          required: true
+          schema:
+            $ref: "#/definitions/CreateServiceTicketPayload"
+      responses:
+        "201":
+          description: "Service ticket created successfully"
+          schema:
+            $ref: "#/definitions/ServiceTicketResponse"
+        "400":
+          description: "The payload failed validation"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+        "404":
+          description: "No customer exists with the given customer_id"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /service-tickets/{ticket_id}/assign-mechanic/{mechanic_id}:
+    put:
+      tags:
+        - service tickets
+      summary: "Assign a mechanic to a service ticket"
+      description: >-
+        Add one mechanic to a service ticket's assignment list. Assigning a
+        mechanic who is already on the ticket is rejected rather than ignored.
+      security: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the service ticket."
+        - in: "path"
+          name: "mechanic_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the mechanic to assign."
+      responses:
+        "200":
+          description: "The updated service ticket, including the newly assigned mechanic"
+          schema:
+            $ref: "#/definitions/ServiceTicketResponse"
+        "400":
+          description: "The mechanic is already assigned to this service ticket"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "404":
+          description: "The service ticket or the mechanic was not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /service-tickets/{ticket_id}/remove-mechanic/{mechanic_id}:
+    put:
+      tags:
+        - service tickets
+      summary: "Remove a mechanic from a service ticket"
+      description: >-
+        Remove one mechanic from a service ticket's assignment list. Removing a
+        mechanic who is not on the ticket is rejected rather than ignored.
+      security: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the service ticket."
+        - in: "path"
+          name: "mechanic_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the mechanic to remove."
+      responses:
+        "200":
+          description: "The updated service ticket, without the removed mechanic"
+          schema:
+            $ref: "#/definitions/ServiceTicketResponse"
+        "400":
+          description: "The mechanic is not assigned to this service ticket"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "404":
+          description: "The service ticket or the mechanic was not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /service-tickets/{ticket_id}/edit:
+    put:
+      tags:
+        - service tickets
+      summary: "Bulk add and remove mechanics on a service ticket"
+      description: >-
+        Add and remove several mechanics on one service ticket in a single
+        request. Unlike assign-mechanic and remove-mechanic, this endpoint is
+        forgiving: IDs that do not match a mechanic, mechanics already assigned,
+        and mechanics not currently assigned are all skipped silently rather
+        than returning an error. Additions are applied before removals, so an ID
+        listed in both add_ids and remove_ids ends up removed.
+      security: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the service ticket to edit."
+        - in: "body"
+          name: "body"
+          description: "The mechanics to add and remove. Both lists are optional and default to empty."
+          required: true
+          schema:
+            $ref: "#/definitions/EditServiceTicketPayload"
+      responses:
+        "200":
+          description: "The updated service ticket"
+          schema:
+            $ref: "#/definitions/ServiceTicketResponse"
+        "400":
+          description: "The payload failed validation"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+        "404":
+          description: "Service ticket not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /service-tickets/{ticket_id}/add-part/{part_id}:
+    post:
+      tags:
+        - service tickets
+      summary: "Add a part to a service ticket"
+      description: >-
+        Record that a part from inventory was used on a service ticket. The
+        request body is optional; when it is omitted the quantity defaults to 1.
+        A part can only appear once per ticket, so adding a part that is already
+        on the ticket increases the existing quantity instead of creating a
+        second entry.
+      security: []
+      parameters:
+        - in: "path"
+          name: "ticket_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the service ticket."
+        - in: "path"
+          name: "part_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the inventory part to add."
+        - in: "body"
+          name: "body"
+          description: "How many of the part were used. Omit the body entirely to add a single unit."
+          required: false
+          schema:
+            $ref: "#/definitions/AddPartPayload"
+      responses:
+        "200":
+          description: "The updated service ticket, including the added part and its quantity"
+          schema:
+            $ref: "#/definitions/ServiceTicketResponse"
+        "400":
+          description: "quantity was not a positive integer"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        "404":
+          description: "The service ticket or the part was not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
 definitions:
   CustomerResponse:
     type: "object"
@@ -794,3 +998,67 @@ definitions:
             format: "int32"
             description: "The number of service tickets this mechanic is assigned to."
             example: 7
+
+  CreateServiceTicketPayload:
+    type: "object"
+    description: "Every field is required when opening a service ticket."
+    required:
+      - "VIN"
+      - "service_date"
+      - "service_desc"
+      - "customer_id"
+    properties:
+      VIN:
+        type: "string"
+        description: "The vehicle identification number of the car being serviced."
+        example: "1HGCM82633A004352"
+      service_date:
+        type: "string"
+        format: "date"
+        description: "The date the service was performed, in YYYY-MM-DD format."
+        example: "2025-03-14"
+      service_desc:
+        type: "string"
+        description: "A description of the work done."
+        example: "Replaced front brake pads and rotors."
+      customer_id:
+        type: "integer"
+        format: "int32"
+        description: "The ID of the customer the ticket belongs to. Must be an existing customer."
+        example: 1
+
+  EditServiceTicketPayload:
+    type: "object"
+    description: >-
+      The mechanics to add to and remove from a service ticket. Both lists are
+      optional and default to empty, so sending `{}` is valid and changes
+      nothing.
+    properties:
+      add_ids:
+        type: "array"
+        description: "IDs of mechanics to assign to the ticket."
+        items:
+          type: "integer"
+          format: "int32"
+        example: [1, 2]
+      remove_ids:
+        type: "array"
+        description: "IDs of mechanics to unassign from the ticket."
+        items:
+          type: "integer"
+          format: "int32"
+        example: [3]
+
+  AddPartPayload:
+    type: "object"
+    description: >-
+      How many units of the part were used. The whole body may be omitted, in
+      which case the quantity defaults to 1.
+    properties:
+      quantity:
+        type: "integer"
+        format: "int32"
+        minimum: 1
+        default: 1
+        description: "The number of units used. Must be a positive integer."
+        example: 2
