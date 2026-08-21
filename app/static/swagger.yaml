@@ -14,6 +14,23 @@ consumes:
   - "application/json"
 produces:
   - "application/json"
+securityDefinitions:
+  customerBearer:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+    description: >-
+      Customer JWT issued by POST /customers/login. Send it as
+      `Authorization: Bearer <token>`. Tokens use HS256, expire after one hour,
+      and contain the role claim `customer`.
+  mechanicBearer:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+    description: >-
+      Mechanic JWT issued by POST /mechanics/login. Send it as
+      `Authorization: Bearer <token>`. Tokens use HS256, expire after one hour,
+      and contain the role claim `mechanic`.
 paths:
   /customers/:
     get:
@@ -21,6 +38,7 @@ paths:
         - customers
       summary: "Get all customers"
       description: "Return a paginated list of customer accounts."
+      security: []
       parameters:
         - in: "query"
           name: "page"
@@ -48,6 +66,7 @@ paths:
         - customers
       summary: "Create a customer"
       description: "Create a customer account with contact information and a password."
+      security: []
       parameters:
         - in: "body"
           name: "body"
@@ -63,12 +82,52 @@ paths:
         "400":
           description: "Invalid customer data or email already associated with an account"
 
+    put:
+      tags:
+        - customers
+      summary: "Update the authenticated customer's account"
+      description: "Partially update the customer identified by the JWT subject."
+      security:
+        - customerBearer: []
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Customer fields to update"
+          required: true
+          schema:
+            $ref: "#/definitions/CreateCustomerPayload"
+      responses:
+        "200":
+          description: "Customer updated successfully"
+          schema:
+            $ref: "#/definitions/CreaterCustomerResponse"
+        "400":
+          description: "Missing, expired, invalid, or malformed bearer token, or invalid customer data"
+        "404":
+          description: "Customer not found"
+
+    delete:
+      tags:
+        - customers
+      summary: "Delete the authenticated customer's account"
+      description: "Delete the customer identified by the JWT subject."
+      security:
+        - customerBearer: []
+      responses:
+        "200":
+          description: "Customer deleted successfully"
+        "400":
+          description: "Missing, expired, or invalid bearer token"
+        "404":
+          description: "Customer not found"
+
   /customers/login:
     post:
       tags:
         - customers
       summary: "Authenticate a customer"
       description: "Authenticate a customer with an email address and password."
+      security: []
       parameters:
         - in: "body"
           name: "body"
@@ -84,12 +143,27 @@ paths:
         "401":
           description: "Invalid email or password"
 
+  /customers/my-tickets:
+    get:
+      tags:
+        - customers
+      summary: "Get the authenticated customer's service tickets"
+      description: "Return service tickets belonging to the customer identified by the JWT subject."
+      security:
+        - customerBearer: []
+      responses:
+        "200":
+          description: "Customer service tickets"
+        "400":
+          description: "Missing, expired, or invalid bearer token"
+
   /mechanics/login:
     post:
       tags:
         - mechanics
       summary: "Authenticate a mechanic"
       description: "Authenticate a mechanic with an email address and password."
+      security: []
       parameters:
         - in: "body"
           name: "body"
