@@ -14,6 +14,15 @@ consumes:
   - "application/json"
 produces:
   - "application/json"
+tags:
+  - name: "customers"
+    description: "Customer accounts, authentication, and a customer's own service tickets."
+  - name: "mechanics"
+    description: "Mechanic accounts, authentication, and workload rankings."
+  - name: "service tickets"
+    description: "Service tickets, mechanic assignments, and parts used."
+  - name: "inventory"
+    description: "The shop's catalog of replacement parts."
 securityDefinitions:
   customerBearer:
     type: "apiKey"
@@ -37,7 +46,9 @@ paths:
       tags:
         - customers
       summary: "Get all customers"
-      description: "Return a paginated list of customer accounts."
+      description: >-
+        Return a paginated list of customer accounts. Responses are cached for
+        60 seconds per unique query string.
       security: []
       parameters:
         - in: "query"
@@ -54,7 +65,7 @@ paths:
           default: 10
           minimum: 1
           maximum: 100
-          description: "The number of customers per page."
+          description: "The number of customers per page. Values above 100 are capped at 100."
       responses:
         "200":
           description: "Paginated list of customers"
@@ -78,33 +89,48 @@ paths:
         "201":
           description: "Customer created successfully"
           schema:
-            $ref: "#/definitions/CreaterCustomerResponse"
+            $ref: "#/definitions/CustomerResponse"
         "400":
-          description: "Invalid customer data or email already associated with an account"
+          description: >-
+            The email is already associated with an account, in which case the
+            body is an ErrorResponse, or the payload failed validation, in which
+            case the body is a ValidationErrorResponse.
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
     put:
       tags:
         - customers
       summary: "Update the authenticated customer's account"
-      description: "Partially update the customer identified by the JWT subject."
+      description: >-
+        Partially update the customer identified by the JWT subject. Only the
+        fields present in the body are changed; a new password is re-hashed
+        before it is stored.
       security:
         - customerBearer: []
       parameters:
         - in: "body"
           name: "body"
-          description: "Customer fields to update"
+          description: "Customer fields to update. Every field is optional."
           required: true
           schema:
-            $ref: "#/definitions/CreateCustomerPayload"
+            $ref: "#/definitions/UpdateCustomerPayload"
       responses:
         "200":
           description: "Customer updated successfully"
           schema:
-            $ref: "#/definitions/CreaterCustomerResponse"
+            $ref: "#/definitions/CustomerResponse"
         "400":
-          description: "Missing, expired, invalid, or malformed bearer token, or invalid customer data"
+          description: >-
+            Missing, expired, invalid, or malformed bearer token, in which case
+            the body is a MessageResponse, or invalid customer data, in which
+            case the body is a ValidationErrorResponse.
+          schema:
+            $ref: "#/definitions/MessageResponse"
         "404":
           description: "Customer not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
     delete:
       tags:
@@ -116,17 +142,49 @@ paths:
       responses:
         "200":
           description: "Customer deleted successfully"
+          schema:
+            $ref: "#/definitions/MessageResponse"
         "400":
           description: "Missing, expired, or invalid bearer token"
+          schema:
+            $ref: "#/definitions/MessageResponse"
         "404":
           description: "Customer not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+  /customers/{customer_id}:
+    get:
+      tags:
+        - customers
+      summary: "Get a single customer"
+      description: "Return one customer account by its ID."
+      security: []
+      parameters:
+        - in: "path"
+          name: "customer_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the customer to return."
+      responses:
+        "200":
+          description: "The requested customer"
+          schema:
+            $ref: "#/definitions/CustomerResponse"
+        "404":
+          description: "Customer not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
   /customers/login:
     post:
       tags:
         - customers
       summary: "Authenticate a customer"
-      description: "Authenticate a customer with an email address and password."
+      description: >-
+        Authenticate a customer with an email address and password and return a
+        customer JWT. Rate limited to 5 requests per minute.
       security: []
       parameters:
         - in: "body"
@@ -137,32 +195,47 @@ paths:
             $ref: "#/definitions/LoginCredentials"
       responses:
         "200":
-          description: "Login successful"
+          description: >-
+            Login successful, returning a LoginResponse. NOTE: the current
+            implementation also returns 200 with a MessageResponse body of
+            `{"message": "Invalid email or password"}` when the credentials are
+            wrong, because the failure branch omits a status code. This should
+            be a 401, as it is on POST /mechanics/login.
           schema:
             $ref: "#/definitions/LoginResponse"
-        "401":
-          description: "Invalid email or password"
+        "429":
+          description: "Rate limit exceeded (more than 5 login attempts per minute)"
 
   /customers/my-tickets:
     get:
       tags:
         - customers
       summary: "Get the authenticated customer's service tickets"
-      description: "Return service tickets belonging to the customer identified by the JWT subject."
+      description: >-
+        Return every service ticket belonging to the customer identified by the
+        JWT subject, including the mechanics assigned and the parts used.
       security:
         - customerBearer: []
       responses:
         "200":
-          description: "Customer service tickets"
+          description: "The customer's service tickets"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/ServiceTicketResponse"
         "400":
           description: "Missing, expired, or invalid bearer token"
+          schema:
+            $ref: "#/definitions/MessageResponse"
 
   /mechanics/login:
     post:
       tags:
         - mechanics
       summary: "Authenticate a mechanic"
-      description: "Authenticate a mechanic with an email address and password."
+      description: >-
+        Authenticate a mechanic with an email address and password and return a
+        mechanic JWT. Rate limited to 5 requests per minute.
       security: []
       parameters:
         - in: "body"
@@ -176,49 +249,32 @@ paths:
           description: "Login successful"
           schema:
             $ref: "#/definitions/LoginResponse"
+        "400":
+          description: "The payload failed validation"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
         "401":
           description: "Invalid email or password"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "429":
+          description: "Rate limit exceeded (more than 5 login attempts per minute)"
 
 definitions:
-  GetAllCustomersResponse:
+  CustomerResponse:
     type: "object"
+    description: "A customer account as returned by the API. The password is never included."
     required:
-      - "customers"
-      - "page"
-      - "per_page"
-      - "total_pages"
-      - "total_customers"
-    properties:
-      customers:
-        type: "array"
-        description: "Customers included in the requested page."
-        items:
-          $ref: "#/definitions/CreaterCustomerResponse"
-      page:
-        type: "integer"
-        format: "int32"
-        description: "The current page number."
-      per_page:
-        type: "integer"
-        format: "int32"
-        description: "The number of customers requested per page."
-      total_pages:
-        type: "integer"
-        format: "int32"
-        description: "The total number of available pages."
-      total_customers:
-        type: "integer"
-        format: "int32"
-        description: "The total number of customers."
-
-  CreateCustomerPayload:
-    type: "object"
-    required:
+      - "id"
       - "name"
       - "email"
       - "phone"
-      - "password"
     properties:
+      id:
+        type: "integer"
+        format: "int32"
+        description: "The customer's ID."
+        example: 1
       name:
         type: "string"
         description: "The customer's full name."
@@ -232,38 +288,98 @@ definitions:
         type: "string"
         description: "The customer's phone number."
         example: "555-0100"
-      password:
-        type: "string"
-        format: "password"
-        description: "The password for the customer account."
-        example: "secret123"
 
-  CreaterCustomerResponse:
+  CreateCustomerPayload:
     type: "object"
+    description: "Every field is required when creating a customer."
     required:
-      - "id"
       - "name"
       - "email"
       - "phone"
+      - "password"
     properties:
-      id:
-        type: "integer"
-        format: "int32"
-        description: "The newly created customer's ID."
-        example: 1
       name:
         type: "string"
         description: "The customer's full name."
+        example: "Alex Morgan"
       email:
         type: "string"
         format: "email"
-        description: "The customer's email address."
+        description: "The customer's email address. Must be unique."
+        example: "alex.morgan@example.com"
       phone:
         type: "string"
-        description: "The customer's phone number."
+        description: "The customer's phone number. Must be unique."
+        example: "555-0100"
+      password:
+        type: "string"
+        format: "password"
+        description: "The password for the customer account. Stored hashed."
+        example: "secret123"
+
+  UpdateCustomerPayload:
+    type: "object"
+    description: >-
+      A partial update. Send only the fields you want to change; omitted fields
+      are left untouched.
+    properties:
+      name:
+        type: "string"
+        description: "The customer's new full name."
+        example: "Alex Morgan"
+      email:
+        type: "string"
+        format: "email"
+        description: "The customer's new email address. Must be unique."
+        example: "alex.morgan@example.com"
+      phone:
+        type: "string"
+        description: "The customer's new phone number. Must be unique."
+        example: "555-0101"
+      password:
+        type: "string"
+        format: "password"
+        description: "A new password. Re-hashed before it is stored."
+        example: "newsecret123"
+
+  GetAllCustomersResponse:
+    type: "object"
+    required:
+      - "customers"
+      - "page"
+      - "per_page"
+      - "total_pages"
+      - "total_customers"
+    properties:
+      customers:
+        type: "array"
+        description: "Customers included in the requested page."
+        items:
+          $ref: "#/definitions/CustomerResponse"
+      page:
+        type: "integer"
+        format: "int32"
+        description: "The current page number."
+        example: 1
+      per_page:
+        type: "integer"
+        format: "int32"
+        description: "The number of customers requested per page."
+        example: 10
+      total_pages:
+        type: "integer"
+        format: "int32"
+        description: "The total number of available pages."
+        example: 3
+      total_customers:
+        type: "integer"
+        format: "int32"
+        description: "The total number of customers."
+        example: 27
 
   LoginCredentials:
     type: "object"
+    description: "Credentials accepted by both the customer and mechanic login endpoints."
     required:
       - "email"
       - "password"
@@ -286,13 +402,173 @@ definitions:
       - "message"
       - "token"
     properties:
-      token:
-        type: "string"
-        description: "Bearer JWT to use for authenticated requests."
-      message:
-        type: "string"
-        description: "Result message for the login request."
       status:
         type: "string"
         description: "Login result status."
         example: "success"
+      message:
+        type: "string"
+        description: "Result message for the login request."
+        example: "successfully logged in."
+      token:
+        type: "string"
+        description: "Bearer JWT to use for authenticated requests."
+        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+  MessageResponse:
+    type: "object"
+    description: "A plain status message, used for deletions and auth failures."
+    required:
+      - "message"
+    properties:
+      message:
+        type: "string"
+        description: "A human-readable message describing the result."
+        example: "Customer id: 1, successfully deleted."
+
+  ErrorResponse:
+    type: "object"
+    description: "An error raised by the route itself, as opposed to schema validation."
+    required:
+      - "error"
+    properties:
+      error:
+        type: "string"
+        description: "A human-readable description of what went wrong."
+        example: "Customer not found."
+
+  ValidationErrorResponse:
+    type: "object"
+    description: >-
+      Returned when the request body fails schema validation. Each key is a
+      field name from the payload and each value is the list of problems found
+      with that field.
+    additionalProperties:
+      type: "array"
+      items:
+        type: "string"
+    example:
+      email:
+        - "Missing data for required field."
+      phone:
+        - "Not a valid string."
+
+  MechanicResponse:
+    type: "object"
+    description: "A mechanic account as returned by the API. The password is never included."
+    required:
+      - "id"
+      - "name"
+      - "email"
+      - "phone"
+      - "salary"
+    properties:
+      id:
+        type: "integer"
+        format: "int32"
+        description: "The mechanic's ID."
+        example: 1
+      name:
+        type: "string"
+        description: "The mechanic's full name."
+        example: "Jordan Reyes"
+      email:
+        type: "string"
+        format: "email"
+        description: "The mechanic's email address."
+        example: "jordan.reyes@example.com"
+      phone:
+        type: "string"
+        description: "The mechanic's phone number."
+        example: "555-0200"
+      salary:
+        type: "number"
+        format: "double"
+        description: "The mechanic's annual salary."
+        example: 62000.0
+
+  InventoryPartResponse:
+    type: "object"
+    description: "A part in the shop's catalog."
+    required:
+      - "id"
+      - "name"
+      - "price"
+    properties:
+      id:
+        type: "integer"
+        format: "int32"
+        description: "The part's ID."
+        example: 1
+      name:
+        type: "string"
+        description: "The part's name."
+        example: "Brake Pad Set"
+      price:
+        type: "number"
+        format: "double"
+        description: "The part's unit price."
+        example: 89.99
+
+  ServiceTicketPartResponse:
+    type: "object"
+    description: >-
+      One part used on a service ticket, together with how many of that part
+      were used.
+    required:
+      - "part"
+      - "quantity"
+    properties:
+      part:
+        $ref: "#/definitions/InventoryPartResponse"
+      quantity:
+        type: "integer"
+        format: "int32"
+        description: "How many of this part were used on the ticket."
+        example: 2
+
+  ServiceTicketResponse:
+    type: "object"
+    description: "A service ticket, including its assigned mechanics and the parts used."
+    required:
+      - "id"
+      - "VIN"
+      - "service_date"
+      - "service_desc"
+      - "customer_id"
+      - "mechanics"
+      - "parts"
+    properties:
+      id:
+        type: "integer"
+        format: "int32"
+        description: "The service ticket's ID."
+        example: 1
+      VIN:
+        type: "string"
+        description: "The vehicle identification number of the car being serviced."
+        example: "1HGCM82633A004352"
+      service_date:
+        type: "string"
+        format: "date"
+        description: "The date the service was performed, in YYYY-MM-DD format."
+        example: "2025-03-14"
+      service_desc:
+        type: "string"
+        description: "A description of the work done."
+        example: "Replaced front brake pads and rotors."
+      customer_id:
+        type: "integer"
+        format: "int32"
+        description: "The ID of the customer who owns this ticket."
+        example: 1
+      mechanics:
+        type: "array"
+        description: "The mechanics currently assigned to this ticket."
+        items:
+          $ref: "#/definitions/MechanicResponse"
+      parts:
+        type: "array"
+        description: "The parts used on this ticket and their quantities."
+        items:
+          $ref: "#/definitions/ServiceTicketPartResponse"
