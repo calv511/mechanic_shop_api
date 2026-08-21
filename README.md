@@ -5,6 +5,10 @@ assigned to those tickets, and parts are pulled from an inventory. Includes JWT-
 authentication with role separation (customer vs mechanic tokens), password hashing,
 rate limiting, response caching, and pagination.
 
+Every endpoint is documented in an interactive Swagger UI at
+[`/api/docs`](#interactive-api-documentation) and covered by a
+[unittest suite](#running-the-tests) of 73 tests.
+
 ## What this API does
 
 - **Customer accounts** — register, log in, get a bearer token, view your own service
@@ -19,6 +23,10 @@ rate limiting, response caching, and pagination.
   tickets they've worked on (single `GROUP BY` query, not N+1).
 - **Two rate-limited login endpoints** (5/minute each) plus default limits (20/hour,
   100/day per endpoint) as blanket protection.
+- **Interactive documentation** — a Swagger UI page describing all 24 endpoints, with
+  request/response shapes and worked examples, served from a static OpenAPI spec.
+- **An automated test suite** — 73 unittest cases, at least one per route, roughly half
+  of them exercising failure paths.
 
 ## Tech stack
 
@@ -31,8 +39,10 @@ rate limiting, response caching, and pagination.
 | Password hashing | Werkzeug `generate_password_hash` / `check_password_hash` (scrypt) |
 | Rate limiting | Flask-Limiter (in-memory storage) |
 | Caching | Flask-Caching (in-memory `SimpleCache`) |
-| Database | MySQL 8+ via `mysql-connector-python` |
+| Database | MySQL 8+ via `mysql-connector-python` (SQLite for tests) |
 | Env loading | python-dotenv |
+| API docs | flask-swagger-ui serving a static Swagger 2.0 spec |
+| Testing | `unittest` (standard library) + Flask's test client |
 
 ## Data model
 
@@ -58,10 +68,17 @@ mechanic_shop_api/
 ├── requirements.txt
 ├── Mechanic_Shop_API.postman_collection.json  # 60-request test suite
 ├── .env                                       # NOT committed - you create this
+├── instance/                                  # auto-created by Flask; holds testing.db (gitignored)
+├── tests/                                     # unittest suite - one file per blueprint
+│   ├── test_customers.py
+│   ├── test_mechanics.py
+│   ├── test_service_tickets.py
+│   └── test_inventory.py
 └── app/
-    ├── __init__.py                            # create_app(): init extensions, register blueprints
+    ├── __init__.py                            # create_app(): init extensions, register blueprints + Swagger UI
     ├── extensions.py                          # ma, limiter, cache singletons
     ├── models.py                              # all models
+    ├── static/swagger.yaml                    # OpenAPI spec served at /api/docs
     ├── utils/util.py                          # encode_token, encode_mechanic_token, @token_required, @mechanic_token_required
     └── blueprints/
         ├── customers/       (__init__.py, routes.py, schemas.py)
@@ -105,13 +122,6 @@ source venv/bin/activate
 
 ```bash
 pip install -r requirements.txt
-```
-
-If that fails with a `ModuleNotFoundError` when you try to run the app (see the
-[Known issues](#known-issues) section), install everything manually instead:
-
-```bash
-pip install Flask Flask-SQLAlchemy flask-marshmallow marshmallow-sqlalchemy Flask-Limiter Flask-Caching python-jose python-dotenv mysql-connector-python Werkzeug
 ```
 
 **3. Create the MySQL database**
@@ -184,9 +194,54 @@ Authorization: Bearer <token>
 verifies `role == "mechanic"` and returns **403 Forbidden** for a valid *customer*
 token — that's the layer that separates shop staff from customers.
 
+## Interactive API documentation
+
+With the server running, open:
+
+```
+http://127.0.0.1:5000/api/docs
+```
+
+Every endpoint is browsable there — grouped by category, with the exact request body it
+expects, the exact response it returns, and a **Try it out** button that sends real
+requests against your running server.
+
+**How it's wired up.** `app/__init__.py` registers a `flask_swagger_ui` blueprint that
+mounts the UI at `/api/docs` and points it at `app/static/swagger.yaml`. The spec is a
+hand-maintained Swagger 2.0 file rather than something generated from docstrings, so the
+docs are a deliberate artifact and not a side effect of code comments.
+
+The spec has two halves:
+
+- **`paths`** — one entry per endpoint: HTTP method, tag, summary, description, path and
+  body parameters, and every response code it can return. Token-protected routes carry a
+  `security` key pointing at one of the two definitions (`customerBearer`,
+  `mechanicBearer`), which is what puts the padlock on those operations in the UI.
+- **`definitions`** — the reusable *shapes*. Payload definitions describe what goes in
+  (`CreateCustomerPayload`, `UpdateCustomerPayload`, …), response definitions describe
+  what comes back (`CustomerResponse`, `ServiceTicketResponse`, …). Defining a shape once
+  and `$ref`-ing it means a change to the customer shape is a single edit, not four.
+
+| | |
+|---|---|
+| Endpoints documented | 24 (across 15 paths) |
+| Definitions | 21 |
+| Responses with worked examples | 61 of 63 |
+
+The two responses without an example are the `429` rate-limit responses on the login
+routes — Flask-Limiter returns an HTML error page rather than JSON, so a JSON example
+there would be inaccurate.
+
+To authorize a protected request from the UI: run `POST /customers/login` (or
+`/mechanics/login`), copy the `token` out of the response, click **Authorize** at the top
+of the page, and enter `Bearer <token>`.
+
 ## Endpoints
 
 Base URL: `http://127.0.0.1:5000`
+
+The tables below are a quick reference; `/api/docs` is the authoritative, always-current
+version with full request/response shapes.
 
 Legend: 🔓 public · 🔑 customer token required · 🔧 mechanic token required
 
@@ -302,6 +357,50 @@ else.
 If you see `429 Too Many Requests` during rapid testing, wait ~60 seconds for the
 window to slide, or restart the Flask server (in-memory storage resets on restart).
 
+## Running the tests
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+No server and no MySQL needed — the tests use Flask's test client to send requests
+directly through the app, backed by SQLite.
+
+**73 tests across four files**, one per blueprint:
+
+| File | Tests | Covers |
+|---|---|---|
+| `tests/test_customers.py` | 17 | registration, login, pagination, profile update, deletion |
+| `tests/test_mechanics.py` | 16 | registration, login, workload ranking, mechanic-only routes |
+| `tests/test_service_tickets.py` | 23 | ticket creation, mechanic assignment, bulk edit, parts |
+| `tests/test_inventory.py` | 17 | catalog CRUD, mechanic-only enforcement, cascade delete |
+
+Every one of the 24 routes is exercised by at least one test.
+
+**Negative tests.** 41 of the assertions target failure paths — 20 × `400`, 15 × `404`,
+4 × `403`, 2 × `401`. These cover missing required fields, duplicate emails, wrong
+passwords, absent and malformed tokens, customer tokens on mechanic-only routes, and
+operations against IDs that don't exist.
+
+**How the tests are structured.** `setUp` builds a fresh app and drops/recreates every
+table before each test, so no test can be influenced by data another left behind. Each
+file keeps small helpers at the top — `create_customer()`, `auth_header()` and friends —
+so an individual test only states what makes it different. Because the protected routes
+identify you from the JWT rather than the URL, `auth_header()` performs a real login and
+returns `{'Authorization': 'Bearer <token>'}`.
+
+Tests assert on effects, not just status codes: the delete tests follow up with a `GET`
+and expect a `404`, and the partial-update tests assert that a field they *didn't* send
+came back unchanged.
+
+**`TestingConfig` differs from `DevelopmentConfig` in three ways**, all of which matter:
+
+| Setting | Why |
+|---|---|
+| `SQLALCHEMY_DATABASE_URI = sqlite:///testing.db` | no MySQL needed; Flask puts the file in `instance/`, which is gitignored |
+| `CACHE_TYPE = 'NullCache'` | `SimpleCache` would serve a cached `GET /customers/` from an earlier request and make tests fail on stale data |
+| `RATELIMIT_ENABLED = False` | the suite makes far more requests than the 20/hour default limit allows, and would otherwise start returning `429` mid-run |
+
 ## Testing with Postman
 
 Import `Mechanic_Shop_API.postman_collection.json` (**Import → File** in Postman).
@@ -334,17 +433,28 @@ exist. Harmless for a class-project cadence.
 The collection's `baseUrl` variable defaults to `http://127.0.0.1:5000`. Change it in
 one place if you run the server on a different host or port.
 
-## Known issues
+## Known limitations
 
-- **`requirements.txt` is UTF-16 LE encoded** and is missing 6 packages the app
-  actually imports: `flask-marshmallow`, `marshmallow-sqlalchemy`, `marshmallow`,
-  `Flask-Caching`, `python-jose`, `python-dotenv`. If `pip install -r requirements.txt`
-  followed by `python app.py` fails with `ModuleNotFoundError`, use the manual install
-  command shown in [Setup step 2](#setup).
-- **Customer login returns 200 on wrong credentials** (with `{"message": "Invalid
-  email or password"}` in the body) instead of 401. The mechanic login route returns
-  401 correctly. Kept as-is to match the code you'd otherwise have to modify.
 - **`token_required` does not verify the `role` claim.** A mechanic's token would
   technically pass authentication on customer-only routes; the mechanic-id-as-customer-id
-  mismatch usually causes a downstream 404, but this is a real gap and is documented
-  as a known limitation.
+  mismatch usually causes a downstream 404, but this is a real gap.
+  `@mechanic_token_required` *does* check the claim, so the reverse direction (a customer
+  token on a mechanic route) is correctly rejected with a 403 — and is covered by tests.
+- **Every `/service-tickets` route is unauthenticated.** Anyone who can reach the API can
+  open tickets, reassign mechanics, and attach parts to any ticket, including tickets
+  belonging to other customers. Customers and inventory both have auth; service tickets
+  do not.
+- **`POST /mechanics/` is public**, so anyone can create a mechanic account and thereby
+  obtain the mechanic token needed to write to inventory. Deliberate for a class project
+  (the first mechanic has to come from somewhere) but not something to ship.
+- **Rate-limit counters are in-memory**, so they reset whenever the server restarts and
+  are not shared across processes.
+
+### Recently resolved
+
+- `requirements.txt` was UTF-16 encoded and missing several packages the app imports,
+  including `flask-swagger-ui` — a clean `pip install -r requirements.txt` failed at
+  startup. Regenerated as UTF-8 with all 33 packages.
+- `POST /customers/login` returned **200** on bad credentials instead of 401, and raised
+  a **500** on a malformed body because it caught `KeyError` where marshmallow raises
+  `ValidationError`. Both fixed; the route now mirrors `POST /mechanics/login`.
