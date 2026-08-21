@@ -228,6 +228,49 @@ paths:
           schema:
             $ref: "#/definitions/MessageResponse"
 
+  /mechanics/:
+    get:
+      tags:
+        - mechanics
+      summary: "Get all mechanics"
+      description: "Return every mechanic account. Not paginated."
+      security: []
+      responses:
+        "200":
+          description: "All mechanics"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/MechanicResponse"
+
+    post:
+      tags:
+        - mechanics
+      summary: "Create a mechanic"
+      description: >-
+        Create a mechanic account. The email must not already belong to another
+        mechanic. The password is hashed before it is stored.
+      security: []
+      parameters:
+        - in: "body"
+          name: "body"
+          description: "Information required to create a mechanic"
+          required: true
+          schema:
+            $ref: "#/definitions/CreateMechanicPayload"
+      responses:
+        "201":
+          description: "Mechanic created successfully"
+          schema:
+            $ref: "#/definitions/MechanicResponse"
+        "400":
+          description: >-
+            The email is already associated with an account, in which case the
+            body is an ErrorResponse, or the payload failed validation, in which
+            case the body is a ValidationErrorResponse.
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
   /mechanics/login:
     post:
       tags:
@@ -259,6 +302,104 @@ paths:
             $ref: "#/definitions/MessageResponse"
         "429":
           description: "Rate limit exceeded (more than 5 login attempts per minute)"
+
+  /mechanics/most-tickets:
+    get:
+      tags:
+        - mechanics
+      summary: "Get mechanics ranked by workload"
+      description: >-
+        Return every mechanic together with the number of service tickets they
+        are assigned to, ordered from the most tickets to the fewest. Mechanics
+        with no tickets are included with a count of 0.
+      security: []
+      responses:
+        "200":
+          description: "Mechanics ordered by ticket count, descending"
+          schema:
+            type: "array"
+            items:
+              $ref: "#/definitions/MechanicTicketCountResponse"
+
+  /mechanics/{mechanic_id}:
+    put:
+      tags:
+        - mechanics
+      summary: "Update a mechanic"
+      description: >-
+        Partially update the mechanic with the given ID. Only the fields present
+        in the body are changed, and a new password is re-hashed before it is
+        stored. Any authenticated mechanic may update any mechanic record, not
+        only their own.
+      security:
+        - mechanicBearer: []
+      parameters:
+        - in: "path"
+          name: "mechanic_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the mechanic to update."
+        - in: "body"
+          name: "body"
+          description: "Mechanic fields to update. Every field is optional."
+          required: true
+          schema:
+            $ref: "#/definitions/UpdateMechanicPayload"
+      responses:
+        "200":
+          description: "Mechanic updated successfully"
+          schema:
+            $ref: "#/definitions/MechanicResponse"
+        "400":
+          description: >-
+            Missing, expired, invalid, or malformed bearer token, in which case
+            the body is a MessageResponse, or invalid mechanic data, in which
+            case the body is a ValidationErrorResponse.
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "403":
+          description: "The bearer token is valid but is not a mechanic token"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "404":
+          description: "Mechanic not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+
+    delete:
+      tags:
+        - mechanics
+      summary: "Delete a mechanic"
+      description: >-
+        Delete the mechanic with the given ID. Any authenticated mechanic may
+        delete any mechanic record, not only their own.
+      security:
+        - mechanicBearer: []
+      parameters:
+        - in: "path"
+          name: "mechanic_id"
+          type: "integer"
+          format: "int32"
+          required: true
+          description: "The ID of the mechanic to delete."
+      responses:
+        "200":
+          description: "Mechanic deleted successfully"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "400":
+          description: "Missing, expired, or invalid bearer token"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "403":
+          description: "The bearer token is valid but is not a mechanic token"
+          schema:
+            $ref: "#/definitions/MessageResponse"
+        "404":
+          description: "Mechanic not found"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 
 definitions:
   CustomerResponse:
@@ -572,3 +713,84 @@ definitions:
         description: "The parts used on this ticket and their quantities."
         items:
           $ref: "#/definitions/ServiceTicketPartResponse"
+
+  CreateMechanicPayload:
+    type: "object"
+    description: "Every field is required when creating a mechanic."
+    required:
+      - "name"
+      - "email"
+      - "phone"
+      - "salary"
+      - "password"
+    properties:
+      name:
+        type: "string"
+        description: "The mechanic's full name."
+        example: "Jordan Reyes"
+      email:
+        type: "string"
+        format: "email"
+        description: "The mechanic's email address. Must be unique."
+        example: "jordan.reyes@example.com"
+      phone:
+        type: "string"
+        description: "The mechanic's phone number."
+        example: "555-0200"
+      salary:
+        type: "number"
+        format: "double"
+        description: "The mechanic's annual salary."
+        example: 62000.0
+      password:
+        type: "string"
+        format: "password"
+        description: "The password for the mechanic account. Stored hashed."
+        example: "secret123"
+
+  UpdateMechanicPayload:
+    type: "object"
+    description: >-
+      A partial update. Send only the fields you want to change; omitted fields
+      are left untouched.
+    properties:
+      name:
+        type: "string"
+        description: "The mechanic's new full name."
+        example: "Jordan Reyes"
+      email:
+        type: "string"
+        format: "email"
+        description: "The mechanic's new email address. Must be unique."
+        example: "jordan.reyes@example.com"
+      phone:
+        type: "string"
+        description: "The mechanic's new phone number."
+        example: "555-0201"
+      salary:
+        type: "number"
+        format: "double"
+        description: "The mechanic's new annual salary."
+        example: 68000.0
+      password:
+        type: "string"
+        format: "password"
+        description: "A new password. Re-hashed before it is stored."
+        example: "newsecret123"
+
+  MechanicTicketCountResponse:
+    type: "object"
+    description: >-
+      A mechanic together with how many service tickets they are assigned to.
+      Returned by GET /mechanics/most-tickets.
+    allOf:
+      - $ref: "#/definitions/MechanicResponse"
+      - type: "object"
+        required:
+          - "ticket_count"
+        properties:
+          ticket_count:
+            type: "integer"
+            format: "int32"
+            description: "The number of service tickets this mechanic is assigned to."
+            example: 7
