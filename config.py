@@ -13,7 +13,12 @@ class DevelopmentConfig:
 class TestingConfig:
     SQLALCHEMY_DATABASE_URI = 'sqlite:///testing.db'
     DEBUG = True
-    CACHE_TYPE = 'SimpleCache'
+    TESTING = True
+    # NullCache so a cached response from an earlier request can never be
+    # served to a later one - SimpleCache made GET /customers/ return stale data
+    CACHE_TYPE = 'NullCache'
+    # The suite makes far more requests than the 20/hour default limit allows
+    RATELIMIT_ENABLED = False
 
 class ProductionConfig:
     pass
