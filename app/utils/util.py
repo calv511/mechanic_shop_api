@@ -53,7 +53,7 @@ def token_required(f):
             return f(customer_id, *args, **kwargs)
 
         else:
-            return jsonify({"message": "You must be logged in to accces this"}), 400
+            return jsonify({"message": "You must be logged in to access this"}), 400
 
     return decorated
 
